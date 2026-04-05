@@ -1,0 +1,816 @@
+/* Orders Page - Minimalist B&W */
+
+.orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.order-card1 {
+  background-color: var(--white);
+  border: 1px solid var(--border-color);
+  padding: 32px;
+  transition: border-color 0.2s;
+}
+
+.order-card1:hover {
+  border-color: var(--foreground);
+}
+
+.order-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.order-id1 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.order-status {
+  padding: 6px 16px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border: 1px solid currentColor;
+}
+
+.status-pending { color: var(--warning); }
+.status-completed { color: var(--success); }
+.status-cancelled { color: var(--danger); }
+.status-shipped { color: var(--info); }
+
+.order-actionss {
+  display: flex;
+  gap: 16px;
+}
+
+.btn-view-details {
+  padding: 12px 24px;
+  background-color: var(--white);
+  color: var(--foreground);
+  border: 1px solid var(--border-color);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-view-details:hover {
+  border-color: var(--foreground);
+  background-color: var(--gray-50);
+}
+
+.btn-cancel-orderr {
+  padding: 12px 24px;
+  background-color: var(--white);
+  color: var(--danger);
+  border: 1px solid var(--border-color);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel-orderr:hover {
+  border-color: var(--danger);
+  background-color: var(--gray-50);
+}
+
+/* Order Card Details */
+.order-card-details {
+  padding: 10px 16px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.detail-label {
+  font-size: 11px;
+  color: black;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.detail-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.detail-value.price {
+  color: var(--primary-color);
+}
+
+/* Order Actions */
+.order-actionss {
+  padding: 10px 46px 10px;
+  display: flex;
+  margin-top: -18px;
+  gap: 48px;
+  align-items: center;
+}
+.order-actionss1 {
+  padding: 10px 46px 10px;
+  display: flex;
+  margin-top: -18px;
+  gap: 48px;
+  align-items: center;
+  text-align: center;
+}
+.btn-view-details {
+  padding: 12px 12px;
+  background-color: rgb(228, 255, 224);
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+  border-radius: 4px;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.btn-view-details:hover {
+  background-color: var(--primary-color);
+  color: white;
+  box-shadow: 0 2px 6px rgba(77, 184, 168, 0.15);
+}
+
+.btn-view-details:active {
+  transform: scale(0.98);
+}
+
+.btn-cancel-orderr {
+  padding: 12px 12px;
+  background-color: #ffebee;
+  color: #c62828;
+  border: 1px solid #c62828;
+  border-radius: 4px;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.btn-cancel-orderr:hover {
+  background-color: #c62828;
+  color: white;
+  box-shadow: 0 2px 6px rgba(198, 40, 40, 0.15);
+}
+
+.btn-cancel-orderr:active {
+  transform: scale(0.98);
+}
+/* ========================================
+   Modal Styles
+   ======================================== */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  max-width: 450px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.details-modal {
+  max-width: 500px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--text-light);
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.modal-close:hover {
+  color: var(--text-color);
+}
+
+.modal-body {
+  padding: 16px;
+}
+
+.modal-body p1 {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-color);
+  line-height: 1.5;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.warning-text {
+  color: #e65100;
+  font-weight: 500;
+  margin-bottom: 16px !important;
+}
+
+.modal-actions3 {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* Details Modal Specific Styles */
+.details-sectionnn {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.detail-itemm {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.detail-itemm .detail-label {
+  font-size: 12px;
+  color: black;
+  font-weight: 500;
+}
+
+.detail-item .detail-value {
+  font-size: 13px;
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+.detail-badge {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  display: inline-block;
+}
+
+.divider {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 12px 0;
+}
+
+.items-section {
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: black;
+  text-transform: uppercase;
+  margin: 0 0 10px 0;
+  letter-spacing: 0.5px;
+}
+
+.items-in-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modal-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background-color: #fafafa;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+}
+
+.modal-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.modal-item-name {
+  font-size: 13px;
+  color: var(--text-color);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modal-item-qty {
+  font-size: 11px;
+  color: gray;
+}
+
+.modal-item-subtotal {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-color);
+  white-space: nowrap;
+  margin-left: 8px;
+}
+
+.summary-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.summary-label {
+  color: black;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.summary-value {
+  color: var(--text-color);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.summary-item:first-child .summary-value {
+  color: var(--primary-color);
+  font-size: 15px;
+}
+
+.btn-close-modal1 {
+  width: 100%;
+  padding: 10px 16px;
+  margin-top: 0;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+  box-shadow: 0 2px 8px rgba(77, 184, 168, 0.2);
+}
+
+.btn-secondary2 {
+  background-color: #808080;
+  color: rgb(255, 255, 255);
+}
+
+.btn-secondary2:hover {
+  background-color: #505050;
+}
+
+.btn-danger {
+  background-color: #c62828;
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #b71c1c;
+  box-shadow: 0 2px 8px rgba(198, 40, 40, 0.2);
+}
+/* ========================================
+   Responsive Design - Tablet (768px - 1023px)
+   ======================================== */
+
+@media (max-width: 1023px) {
+  .orders-page {
+    padding: 24px 16px;
+  }
+
+  .orders-header h1 {
+    font-size: 24px;
+  }
+
+  .order-card-header {
+    padding: 11px 14px;
+  }
+
+  .order-card-details {
+    padding: 9px 14px;
+    gap: 10px;
+  }
+
+  .order-actionss {
+    padding: 9px 14px;
+  }
+
+  .details-modal {
+    max-width: 450px;
+  }
+}
+
+/* ========================================
+   Responsive Design - Mobile (480px - 767px)
+   ======================================== */
+
+@media (max-width: 767px) {
+  .orders-page {
+    padding: 18px 12px;
+  }
+
+  .orders-header {
+    margin-bottom: 20px;
+  }
+
+  .orders-header h1 {
+    font-size: 20px;
+  }
+
+  .orders-list {
+    gap: 14px;
+  }
+
+  .order-card {
+    border-radius: 6px;
+  }
+
+  .order-card-header {
+    padding: 10px 12px;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .order-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .order-id {
+    font-size: 12px;
+  }
+
+  .order-date {
+    font-size: 10px;
+  }
+
+  .order-status {
+    padding: 3px 9px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .order-card-details {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .detail-label {
+    font-size: 10px;
+  }
+
+  .detail-value {
+    font-size: 12px;
+  }
+
+  .order-actionss {
+    padding: 15px 48px;
+    margin-bottom: -5px;
+    gap: 10px;
+  }
+
+  .btn-view-details{
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+
+  .btn-cancel-orderr {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+
+  .empty-state {
+    padding: 40px 16px;
+  }
+
+  .empty-state h2 {
+    font-size: 18px;
+  }
+
+  .empty-state p {
+    font-size: 12px;
+  }
+
+  .modal-header {
+    padding: 14px;
+  }
+
+  .modal-header h3 {
+    font-size: 15px;
+  }
+
+  .modal-body {
+    padding: 14px;
+  }
+
+  .modal-body p {
+    font-size: 12px;
+  }
+
+  .section-title {
+    font-size: 11px;
+  }
+
+  .modal-item {
+    padding: 8px 10px;
+  }
+
+  .modal-item-name {
+    font-size: 12px;
+  }
+
+  .modal-item-qty {
+    font-size: 10px;
+  }
+
+  .modal-item-subtotal {
+    font-size: 12px;
+  }
+
+  .detail-item {
+    font-size: 12px;
+  }
+
+  .summary-item {
+    font-size: 12px;
+  }
+
+  .summary-value {
+    font-size: 13px;
+  }
+
+  .btn {
+    padding: 9px 12px;
+    font-size: 12px;
+  }
+}
+
+/* ========================================
+   Responsive Design - Small Mobile (360px - 479px)
+   ======================================== */
+
+@media (max-width: 479px) {
+  .orders-page {
+    padding: 14px 8px;
+  }
+
+  .orders-header h1 {
+    font-size: 18px;
+  }
+
+  .orders-header {
+    margin-bottom: 16px;
+  }
+
+  .orders-list {
+    gap: 12px;
+  }
+
+  .order-card-header {
+    padding: 10px;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .order-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .order-id {
+    font-size: 11px;
+  }
+
+  .order-date {
+    font-size: 10px;
+  }
+
+  .order-status {
+    padding: 3px 8px;
+    font-size: 9px;
+    white-space: nowrap;
+  }
+
+  .order-card-details {
+    padding: 8px 10px;
+    gap: 8px;
+    grid-template-columns: 1fr;
+  }
+
+  .detail-row {
+    justify-content: space-between;
+  }
+
+  .detail-label {
+    font-size: 10px;
+  }
+
+  .detail-value {
+    font-size: 11px;
+  }
+
+  .order-actions {
+    padding: 8px 10px;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .btn-view-details,
+  .btn-cancel-order {
+    padding: 6px 8px;
+    font-size: 10px;
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .empty-state {
+    padding: 35px 12px;
+  }
+
+  .empty-state h2 {
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+
+  .empty-state p {
+    font-size: 11px;
+    margin-bottom: 14px;
+  }
+
+  .modal-header {
+    padding: 12px;
+  }
+
+  .modal-header h3 {
+    font-size: 14px;
+  }
+
+  .modal-body {
+    padding: 12px;
+  }
+
+  .modal-body p {
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+
+  .details-section {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .detail-item {
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .detail-item .detail-label {
+    font-size: 10px;
+  }
+
+  .detail-item .detail-value {
+    font-size: 11px;
+  }
+
+  .divider {
+    margin: 10px 0;
+  }
+
+  .section-title {
+    font-size: 10px;
+    margin-bottom: 8px;
+  }
+
+  .items-in-modal {
+    gap: 6px;
+  }
+
+  .modal-item {
+    padding: 7px 8px;
+  }
+
+  .modal-item-info {
+    gap: 2px;
+  }
+
+  .modal-item-name {
+    font-size: 11px;
+  }
+
+  .modal-item-qty {
+    font-size: 9px;
+  }
+
+  .modal-item-subtotal {
+    font-size: 11px;
+    margin-left: 6px;
+  }
+
+  .summary-section {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .summary-item {
+    font-size: 11px;
+  }
+
+  .summary-label {
+    font-size: 10px;
+  }
+
+  .summary-value {
+    font-size: 12px;
+  }
+
+  .summary-item:first-child .summary-value {
+    font-size: 13px;
+  }
+
+  .modal-actions {
+    margin-top: 12px;
+    gap: 8px;
+  }
+
+  .btn {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  .btn-close-modal1 {
+    padding: 9px 12px;
+  }
+}

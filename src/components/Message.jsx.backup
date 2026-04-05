@@ -1,0 +1,282 @@
+import React, { useState, useEffect, useRef } from 'react'
+import { db } from '../services/firebase'
+import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, doc, getDoc, onSnapshot } from 'firebase/firestore'
+import '../css/Messaging.css'
+
+export function Message({ user, userRole, displayName, isOpen, onClose }) {
+  const [messages, setMessages] = useState([])
+  const [messageInput, setMessageInput] = useState('')
+  const [loadingMessages, setLoadingMessages] = useState(false)
+  const [inboxUsers, setInboxUsers] = useState([])
+  const [selectedConversationUser, setSelectedConversationUser] = useState(null)
+  const messagesEndRef = useRef(null)
+  const messagesUnsubscribeRef = useRef(null)
+  const inboxUnsubscribeRef = useRef(null)
+
+  useEffect(() => {
+    if (isOpen) {
+      if (userRole === 'seller') {
+        setupInboxListener()
+      } else {
+        setupMessagesListener('seller')
+      }
+    } else {
+      // Cleanup listeners when modal closes
+      if (messagesUnsubscribeRef.current) {
+        messagesUnsubscribeRef.current()
+      }
+      if (inboxUnsubscribeRef.current) {
+        inboxUnsubscribeRef.current()
+      }
+    }
+    
+    return () => {
+      if (messagesUnsubscribeRef.current) {
+        messagesUnsubscribeRef.current()
+      }
+      if (inboxUnsubscribeRef.current) {
+        inboxUnsubscribeRef.current()
+      }
+    }
+  }, [isOpen, userRole])
+
+  // auto-scroll to latest message when messages change or modal opens
+  useEffect(() => {
+    if (!messagesEndRef.current) return
+    // use requestAnimationFrame to wait for DOM updates
+    const raf = requestAnimationFrame(() => {
+      try {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
+      } catch (e) {
+        messagesEndRef.current.scrollIntoView()
+      }
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [messages, isOpen, selectedConversationUser])
+
+  // Admin inbox: list unique users who have messaged the shared admin (real-time)
+  const setupInboxListener = async () => {
+    try {
+      const q = query(
+        collection(db, 'messages'),
+        where('participants', 'array-contains', 'seller')
+      )
+      
+      if (inboxUnsubscribeRef.current) {
+        inboxUnsubscribeRef.current()
+      }
+
+      inboxUnsubscribeRef.current = onSnapshot(q, (snap) => {
+        const map = new Map()
+        for (const d of snap.docs) {
+          const data = d.data()
+          const other = (data.participants || []).find((p) => p !== 'admin')
+          if (!other) continue
+          
+          const cur = map.get(other) || { userId: other, lastMessage: null, unread: 0 }
+          if (!cur.lastMessage || (data.createdAt && cur.lastMessage.createdAt && data.createdAt.seconds > cur.lastMessage.createdAt.seconds) || !cur.lastMessage.createdAt) {
+            cur.lastMessage = { text: data.message, createdAt: data.createdAt }
+          }
+          map.set(other, cur)
+        }
+
+        const fetchUsersInfo = async () => {
+          const users = []
+          for (const [userId, info] of map.entries()) {
+            try {
+              const userDoc = await getDoc(doc(db, 'users', userId))
+              users.push({
+                userId,
+                displayName: userDoc.exists() ? (userDoc.data().displayName || userDoc.data().email || 'User') : 'User',
+                email: userDoc.exists() ? userDoc.data().email : '',
+                lastMessage: info.lastMessage,
+                unread: 0,
+              })
+            } catch (e) {
+              users.push({ userId, displayName: 'User', email: '', lastMessage: info.lastMessage, unread: info.unread || 0 })
+            }
+          }
+
+          users.sort((a, b) => {
+            const ta = a.lastMessage?.createdAt?.seconds || 0
+            const tb = b.lastMessage?.createdAt?.seconds || 0
+            return tb - ta
+          })
+
+          setInboxUsers(users)
+        }
+
+        fetchUsersInfo()
+      }, (err) => {
+        console.error('Error setting up inbox listener:', err)
+      })
+    } catch (err) {
+      console.error('Error in setupInboxListener:', err)
+    }
+  }
+
+  // Setup real-time listener for messages
+  const setupMessagesListener = async (otherParticipant) => {
+    setLoadingMessages(true)
+    try {
+      const messagesQuery = query(
+        collection(db, 'messages'),
+        where('participants', 'array-contains', otherParticipant),
+        orderBy('createdAt', 'asc')
+      )
+
+      if (messagesUnsubscribeRef.current) {
+        messagesUnsubscribeRef.current()
+      }
+
+      messagesUnsubscribeRef.current = onSnapshot(messagesQuery, (messagesSnapshot) => {
+        const userMessages = messagesSnapshot.docs
+          .filter(doc => {
+            const data = doc.data()
+            const participants = data.participants || []
+            if (userRole !== 'seller') {
+              return participants.includes(user.uid) && participants.includes('seller')
+            }
+            return participants.includes(otherParticipant) && participants.includes('seller')
+          })
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+        
+        setMessages(userMessages)
+        setLoadingMessages(false)
+      }, (err) => {
+        console.error('Error setting up messages listener:', err)
+        setLoadingMessages(false)
+      })
+    } catch (err) {
+      console.error('Error in setupMessagesListener:', err)
+      setLoadingMessages(false)
+    }
+  }
+
+  // Legacy function - kept for backward compatibility but now uses setupMessagesListener
+  const fetchMessages = async (otherParticipant) => {
+    setupMessagesListener(otherParticipant)
+  }
+
+  const handleSendMessage = async () => {
+    if (!messageInput.trim()) return
+
+    try {
+      let receiverId = null
+      let participants = []
+      if (userRole === 'seller') {
+        // admin must have selected a user conversation
+        if (!selectedConversationUser) return
+        receiverId = selectedConversationUser
+        participants = [selectedConversationUser, 'seller']
+      } else {
+        // regular user: route to shared admin inbox
+        receiverId = 'seller'
+        participants = [user.uid, 'seller']
+      }
+
+      await addDoc(collection(db, 'messages'), {
+        senderId: user.uid,
+        senderName: displayName,
+        receiverId,
+        participants,
+        message: messageInput,
+        createdAt: serverTimestamp(),
+        isRead: false
+      })
+
+      setMessageInput('')
+      if (userRole === 'selelr') {
+        // refresh conversation - the listener will auto-update
+        setupMessagesListener(selectedConversationUser)
+      } else {
+        setupMessagesListener('seller')
+      }
+    } catch (err) {
+      console.error('Error sending message:', err)
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="messaging-modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="messaging-modal-header">
+          <h3>{userRole === 'seller' ? 'Customer Messages' : 'Customization'}</h3>
+          <button 
+            className="modal-close-btn1" 
+            onClick={onClose}
+          >
+            ✕
+          </button>
+        </div>
+
+        {userRole === 'seller' ? (
+          <div className="admin-inbox">
+            <div className="inbox-list">
+              {inboxUsers.length === 0 ? (
+                <div className="empty-state33"><p>No conversations yet</p></div>
+              ) : (
+                inboxUsers.map(u => (
+                  <button
+                    key={u.userId}
+                    className={`inbox-item ${selectedConversationUser === u.userId ? 'active' : ''}`}
+                    onClick={() => {
+                      setSelectedConversationUser(u.userId)
+                      fetchMessages(u.userId)
+                    }}
+                  >
+                    <div className="inbox-left">
+                      <div className="inbox-avatar">{u.displayName?.charAt(0)?.toUpperCase() || 'U'}</div>
+                    </div>
+                    <div className="inbox-mid">
+                      <div className="inbox-name">{u.displayName}</div>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="messages-container">
+          {loadingMessages ? (
+            <div className="loading-state">Loading messages...</div>
+          ) : messages.length === 0 ? (
+            <div className="empty-state">
+              <p>You must select a converstation</p>
+            </div>
+          ) : (
+            <div className="messages-list">
+              {messages.map((msg) => (
+                <div 
+                  key={msg.id} 
+                  className={`message-bubble ${msg.senderId === user.uid ? 'sent' : 'received'}`}
+                >
+                  <p className="message-sender">{msg.senderName}</p>
+                  <p className="message-text">{msg.message}</p>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+
+        <div className="message-input-area">
+          <input
+            type="text"
+            value={messageInput}
+            onChange={(e) => setMessageInput(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+            placeholder="Type your message..."
+            className="message-input"
+          />
+          <button onClick={handleSendMessage} className="btn-send">
+            Send
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

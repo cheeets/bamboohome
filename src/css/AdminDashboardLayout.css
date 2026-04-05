@@ -1,0 +1,188 @@
+/* Admin Dashboard Layout - Minimalist B&W */
+
+.admin-dashboard-layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--white);
+}
+
+/* Main Content Area */
+.admin-main-content {
+  flex: 1;
+  margin-left: 280px;
+  display: flex;
+  flex-direction: column;
+  transition: margin-left 0.3s ease;
+  background-color: var(--white);
+}
+
+/* Page Header */
+.admin-page-header {
+  background: var(--white);
+  padding: 40px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 32px;
+}
+
+.header-content h1 {
+  margin: 0 0 12px 0;
+  font-size: 2.5rem;
+  color: var(--foreground);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+}
+
+.header-subtitle {
+  margin: 0;
+  color: var(--gray-500);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.header-stats {
+  display: flex;
+  gap: 24px;
+}
+
+.quick-stat {
+  background: var(--white);
+  color: var(--foreground);
+  padding: 24px 32px;
+  border: 1px solid var(--border-color);
+  text-align: left;
+  min-width: 160px;
+  transition: border-color 0.2s;
+}
+
+.quick-stat:hover {
+  border-color: var(--foreground);
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--gray-500);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Content Area */
+.admin-content-area {
+  flex: 1;
+  padding: 40px;
+  overflow-y: auto;
+}
+
+.orders-management-section {
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  padding: 32px;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .admin-main-content {
+    margin-left: 0;
+  }
+
+  .admin-page-header {
+    padding: 20px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .header-stats {
+    width: 100%;
+  }
+
+  .admin-content-area {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-page-header {
+    padding: 16px;
+  }
+
+  .header-content h1 {
+    font-size: 1.5rem;
+  }
+
+  .header-stats {
+    width: 100%;
+    gap: 12px;
+  }
+
+  .quick-stat {
+    flex: 1;
+    min-width: 80px;
+    padding: 12px 16px;
+  }
+
+  .stat-value {
+    font-size: 1.4rem;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+  }
+
+  .admin-content-area {
+    padding: 15px;
+  }
+
+  .orders-management-section {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-page-header {
+    padding: 12px;
+    gap: 15px;
+  }
+
+  .header-content h1 {
+    font-size: 1.3rem;
+  }
+
+  .header-stats {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .quick-stat {
+    padding: 10px 12px;
+    min-width: 70px;
+  }
+
+  .stat-value {
+    font-size: 1.2rem;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+  }
+
+  .admin-content-area {
+    padding: 12px;
+  }
+}

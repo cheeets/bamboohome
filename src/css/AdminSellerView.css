@@ -1,0 +1,148 @@
+.admin-seller-view {
+  padding: 40px;
+  background: var(--white);
+  min-height: 100vh;
+}
+
+.admin-view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+}
+
+.btn-back-admin {
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  padding: 12px 24px;
+  font-weight: 700;
+  color: var(--foreground);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+
+.btn-back-admin:hover {
+  background: var(--gray-50);
+  border-color: var(--foreground);
+}
+
+.admin-mode-badge {
+  background: var(--foreground);
+  color: var(--white);
+  padding: 8px 16px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.seller-store-info-card {
+  background: var(--white);
+  padding: 40px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 60px;
+}
+
+.store-main-details h1 {
+  font-size: 2.5rem;
+  color: var(--foreground);
+  margin: 0 0 12px 0;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+}
+
+.seller-email-meta {
+  color: var(--gray-500);
+  font-size: 0.9rem;
+  margin: 0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.inventory-summary-mini {
+  display: flex;
+  gap: 24px;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 24px 32px;
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  min-width: 160px;
+  transition: border-color 0.2s;
+}
+
+.summary-item:hover {
+  border-color: var(--foreground);
+}
+
+.summary-val {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--foreground);
+}
+
+.summary-lab {
+  font-size: 0.7rem;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-top: 8px;
+  letter-spacing: 0.05em;
+}
+
+.summary-item.warning .summary-val { color: var(--warning); }
+.summary-item.critical .summary-val { color: var(--danger); }
+
+.products-management-section h2 {
+  font-size: 1.5rem;
+  color: var(--foreground);
+  margin-bottom: 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.products-management-section h2::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 4rem;
+  color: #64748b;
+  font-size: 1.125rem;
+}
+
+@media (max-width: 768px) {
+  .seller-store-info-card {
+    flex-direction: column;
+    gap: 2rem;
+    text-align: center;
+  }
+  
+  .inventory-summary-mini {
+    width: 100%;
+    justify-content: center;
+  }
+}
