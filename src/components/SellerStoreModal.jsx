@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { db } from '../services/firebase'
 import { collection, getDocs, query, where, doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
@@ -8,6 +9,7 @@ import '../css/SellerStoreModal.css'
 export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, onClose }) {
   const { user } = useAuth()
   const { addToCart } = useCart()
+  const navigate = useNavigate()
   const [sellerProducts, setSellerProducts] = useState([])
   const [loading, setLoading] = useState(false)
   const [sellerData, setSellerData] = useState(null)
@@ -204,6 +206,28 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
                     </button>
                   ))}
                 </div>
+                <button
+                  className="shopee-message-btn"
+                  onClick={() => {
+                    onClose(); // Close modal first
+                    navigate('/chat', { state: { sellerId } });
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#EE4D2D',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: '700',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  💬 Message
+                </button>
               </div>
             </div>
           </div>

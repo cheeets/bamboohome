@@ -245,6 +245,7 @@ export default function AdminUsersDashboard({
                   </button>
                   <button
                     className="action-btn delete-btn"
+                    title="Delete User"
                     onClick={() => {
                       if (window.confirm(`Are you sure you want to delete ${user.displayName || user.email}?`)) {
                         handleDeleteUser(user.id)
@@ -348,6 +349,7 @@ export default function AdminUsersDashboard({
               </button>
               <button 
                 className="btn btn-danger"
+                title="Delete this user"
                 onClick={() => {
                   if (window.confirm(`Are you sure you want to delete ${selectedUser.displayName || selectedUser.email}?`)) {
                     handleDeleteUser(selectedUser.id)

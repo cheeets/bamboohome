@@ -282,6 +282,28 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
                     >
                       👁️ View Store
                     </button>
+                    <button
+                      className="btn-message-seller"
+                      onClick={() => navigate('/chat', { state: { sellerId: product.sellerId } })}
+                      style={{
+                        marginTop: '8px',
+                        width: '100%',
+                        padding: '8px',
+                        background: '#EE4D2D',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.8rem',
+                        fontWeight: '700',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      💬 Message Seller
+                    </button>
                   </div>
                 </div>
               </div>

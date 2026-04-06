@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { db } from '../services/firebase'
 import { collection, query, where, addDoc, serverTimestamp, orderBy, onSnapshot, getDocs, doc, getDoc, writeBatch } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
@@ -6,6 +7,7 @@ import '../css/Messaging.css'
 
 export function Chat() {
   const { user, userName, userRole } = useAuth()
+  const location = useLocation()
   const [messages, setMessages] = useState([])
   const [messageInput, setMessageInput] = useState('')
   const [loadingMessages, setLoadingMessages] = useState(false)
@@ -16,6 +18,14 @@ export function Chat() {
   const messagesEndRef = useRef(null)
   const messagesUnsubscribeRef = useRef(null)
   const conversationsUnsubscribeRef = useRef(null)
+
+  // Handle incoming sellerId from navigation state
+  useEffect(() => {
+    if (location.state?.sellerId) {
+      console.log('📬 Navigated to chat with seller:', location.state.sellerId)
+      setSelectedOtherId(location.state.sellerId)
+    }
+  }, [location.state])
 
   // Mark all messages as read when page opens
   useEffect(() => {
@@ -100,27 +110,48 @@ export function Chat() {
           return
         }
         
-        // If buyer, fetch sellers. If seller, fetch buyers
+        // If buyer, fetch only sellers with existing conversations
         const roleToFetch = userRole === 'seller' ? 'user' : 'seller'
         console.log('🔍 Fetching users with role:', roleToFetch)
         
-        const snapshot = await getDocs(query(collection(db, 'users'), where('role', '==', roleToFetch)))
+        // First get the participants from messages to know who we've talked to
+        const msgQuery = query(
+          collection(db, 'messages'),
+          where('participants', 'array-contains', user.uid)
+        )
+        const msgSnapshot = await getDocs(msgQuery)
+        const participantIds = new Set()
+        msgSnapshot.docs.forEach(doc => {
+          const data = doc.data()
+          const other = data.participants.find(p => p !== user.uid)
+          if (other) participantIds.add(other)
+        })
+
+        // If we were navigated here with a specific sellerId, add it to the set
+        if (location.state?.sellerId) {
+          participantIds.add(location.state.sellerId)
+        }
+
         const usersData = {}
         
-        console.log('📊 Found', snapshot.docs.length, 'users with role', roleToFetch)
-        
-        snapshot.docs.forEach(doc => {
-          usersData[doc.id] = {
-            uid: doc.id,
-            storeName: doc.data().storeName || doc.data().name || 'Store',
-            name: doc.data().name || 'User',
-            email: doc.data().email,
-            storePhotoUrl: doc.data().storePhotoUrl || null
+        if (participantIds.size > 0) {
+          // Firestore 'in' query is limited to 10 items, but we'll fetch them individually or use chunks if needed.
+          // For simplicity and since it's likely a small number of active chats:
+          for (const otherId of participantIds) {
+            const userDoc = await getDoc(doc(db, 'users', otherId))
+            if (userDoc.exists() && userDoc.data().role === roleToFetch) {
+              usersData[otherId] = {
+                uid: otherId,
+                storeName: userDoc.data().storeName || userDoc.data().name || 'Store',
+                name: userDoc.data().name || 'User',
+                email: userDoc.data().email,
+                storePhotoUrl: userDoc.data().storePhotoUrl || null
+              }
+            }
           }
-          console.log('✅ Added user:', doc.id, usersData[doc.id])
-        })
+        }
         
-        console.log('📝 Final users map:', usersData)
+        console.log('📝 Final restricted users map:', usersData)
         setOtherUsersMap(usersData)
         setLoadingConversations(false)
       } catch (err) {

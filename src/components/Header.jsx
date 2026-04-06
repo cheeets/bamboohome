@@ -135,6 +135,13 @@ export function Header() {
               + Add Product
             </button>
           )}
+          <Link to="/chat" title="Messages" className="nav-link icon-link" onClick={() => setIsMenuOpen(false)}>
+            <div style={{ position: 'relative' }}>
+              <span className="nav-icon">💬</span>
+              {unreadMessages > 0 && <span className="cart-count-header">{unreadMessages}</span>}
+            </div>
+            <span className="nav-text">Messages</span>
+          </Link>
           {user && userRole === 'user' && (
             <>
               <Link to="/cart" title="View Cart" className="nav-link icon-link" onClick={() => setIsMenuOpen(false)}>
@@ -145,9 +152,6 @@ export function Header() {
               <Link to="/orders" title="View Orders" className="nav-link" onClick={() => setIsMenuOpen(false)}>
                 Orders {pendingOrders > 0 && <span className="notif-badge">{pendingOrders}</span>}
               </Link>
-              <Link to="/messages" title="View Messages" className="nav-link" onClick={() => setIsMenuOpen(false)}>
-                Messages {unreadMessages > 0 && <span className="notif-badge">{unreadMessages}</span>}
-              </Link>
               <Link to="/profile" title="View Profile" className="nav-link" onClick={() => setIsMenuOpen(false)}>
                 Profile
               </Link>
@@ -155,9 +159,6 @@ export function Header() {
           )}
           {user && userRole === 'seller' && (
             <>
-              <Link to="/messages" title="Message Buyers" className="nav-link" onClick={() => setIsMenuOpen(false)}>
-                💬 Messages {unreadMessages > 0 && <span className="notif-badge">{unreadMessages}</span>}
-              </Link>
               <Link to="/seller/dashboard" title="Seller Dashboard" className="nav-link" onClick={() => setIsMenuOpen(false)}>
                 Orders {pendingOrders > 0 && <span className="notif-badge">{pendingOrders}</span>}
               </Link>

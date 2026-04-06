@@ -801,13 +801,26 @@ export function SellerDashboard() {
                 <div className="dashboard-header">
                   <h2>💬 Messages with Buyers</h2>
                 </div>
-                <div className="messaging-card">
-                  <p className="messaging-description">Keep in touch with your customers and respond to their inquiries.</p>
+                <div className="messaging-card" style={{ padding: '40px', background: 'white', borderRadius: '12px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
+                  <div className="messaging-icon" style={{ fontSize: '4rem', marginBottom: '20px' }}>💬</div>
+                  <p className="messaging-description" style={{ fontSize: '1.1rem', color: '#666', marginBottom: '30px' }}>Keep in touch with your customers and respond to their inquiries.</p>
                   <button
-                    onClick={() => navigate('/messages')}
+                    onClick={() => navigate('/chat')}
                     className="btn-open-chat"
+                    style={{
+                      padding: '14px 32px',
+                      background: '#1b4332',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '50px',
+                      fontWeight: '700',
+                      fontSize: '1rem',
+                      textTransform: 'uppercase',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
                   >
-                    Open Chat Window
+                    Open Messages Panel
                   </button>
                 </div>
               </section>
