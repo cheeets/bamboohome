@@ -1,0 +1,17 @@
+{
+  "name": "GreenNest - Sustainable Bamboo Furniture",
+  "short_name": "GreenNest",
+  "description": "Premium eco-friendly bamboo furniture for your home.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/globe.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

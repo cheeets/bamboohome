@@ -1,188 +1,199 @@
-/* Admin Dashboard Layout - Minimalist B&W */
-
-.admin-dashboard-layout {
-  display: flex;
-  min-height: 100vh;
-  background: var(--white);
+/* Admin & Seller dashboard shell — aligned with buyer account layout */
+:root {
+  --dashboard-sidebar-width: 240px;
 }
 
-/* Main Content Area */
-.admin-main-content {
+.admin-dashboard-layout,
+.seller-dashboard-layout {
+  min-height: calc(100vh - var(--header-total-height, 100px));
+  background: var(--bamboo-cream);
+  padding: 20px 24px 32px;
+}
+
+.dashboard-shell-inner {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+/* Main panel — matches buyer-main-panel */
+.admin-main-content,
+.dashboard-main-panel {
   flex: 1;
-  margin-left: 280px;
-  display: flex;
-  flex-direction: column;
-  transition: margin-left 0.3s ease;
-  background-color: var(--white);
+  min-width: 0;
+  margin-left: 0 !important;
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
 
-/* Page Header */
 .admin-page-header {
   background: var(--white);
-  padding: 40px;
   border-bottom: 1px solid var(--border-color);
+  padding: 20px 24px;
+  min-height: auto;
+}
+
+.admin-content-area {
+  padding: 24px;
+  max-width: none;
+  margin: 0;
+}
+
+/* In-panel view headers (replaces old dashboard-hero inside panel) */
+.dashboard-hero,
+.panel-view-header {
+  padding: 0 0 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.dashboard-hero .hero-content h1,
+.panel-view-header h1 {
+  font-family: var(--font-display);
+  font-size: clamp(20px, 3vw, 24px);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 4px;
+  letter-spacing: -0.02em;
+}
+
+.dashboard-hero .hero-content p,
+.panel-view-header p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Page header inside main panel (seller dashboard) */
+.admin-page-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
   flex-wrap: wrap;
-  gap: 32px;
+  gap: 20px;
 }
 
 .header-content h1 {
-  margin: 0 0 12px 0;
-  font-size: 2.5rem;
-  color: var(--foreground);
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: clamp(20px, 3vw, 26px);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 .header-subtitle {
   margin: 0;
-  color: var(--gray-500);
-  font-size: 0.9rem;
+  font-size: 14px;
+  color: var(--text-secondary);
+  min-height: 20px;
+}
+
+.header-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.quick-stat {
+  background: var(--bg-subtle);
+  padding: 14px 20px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  text-align: left;
+  min-width: 120px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.quick-stat:hover {
+  border-color: rgba(46, 125, 50, 0.3);
+  box-shadow: var(--shadow-xs);
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+  line-height: 1;
+  color: var(--primary-green);
+}
+
+.stat-label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-tertiary);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
-.header-stats {
-  display: flex;
-  gap: 24px;
-}
-
-.quick-stat {
-  background: var(--white);
-  color: var(--foreground);
-  padding: 24px 32px;
-  border: 1px solid var(--border-color);
-  text-align: left;
-  min-width: 160px;
-  transition: border-color 0.2s;
-}
-
-.quick-stat:hover {
-  border-color: var(--foreground);
-}
-
-.stat-value {
-  display: block;
-  font-size: 1.8rem;
-  font-weight: 800;
-  margin-bottom: 8px;
-  line-height: 1;
-}
-
-.stat-label {
-  display: block;
-  font-size: 0.7rem;
-  color: var(--gray-500);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-/* Content Area */
-.admin-content-area {
-  flex: 1;
-  padding: 40px;
-  overflow-y: auto;
-}
-
 .orders-management-section {
   background: var(--white);
   border: 1px solid var(--border-color);
-  padding: 32px;
+  border-radius: var(--radius-lg);
+  padding: 24px;
 }
 
-/* Responsive Design */
 @media (max-width: 1024px) {
-  .admin-main-content {
-    margin-left: 0;
+  .admin-dashboard-layout,
+  .seller-dashboard-layout {
+    padding: 16px;
   }
 
-  .admin-page-header {
-    padding: 20px;
+  .dashboard-shell-inner {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 20px;
-  }
-
-  .header-stats {
-    width: 100%;
-  }
-
-  .admin-content-area {
-    padding: 20px;
   }
 }
 
 @media (max-width: 768px) {
-  .admin-page-header {
+  .admin-dashboard-layout,
+  .seller-dashboard-layout {
+    padding: 0;
+  }
+
+  .admin-main-content,
+  .dashboard-main-panel {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .admin-content-area {
     padding: 16px;
   }
 
-  .header-content h1 {
-    font-size: 1.5rem;
+  .admin-page-header {
+    padding: 16px;
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .header-stats {
     width: 100%;
-    gap: 12px;
   }
 
   .quick-stat {
     flex: 1;
-    min-width: 80px;
-    padding: 12px 16px;
-  }
-
-  .stat-value {
-    font-size: 1.4rem;
-  }
-
-  .stat-label {
-    font-size: 0.75rem;
-  }
-
-  .admin-content-area {
-    padding: 15px;
-  }
-
-  .orders-management-section {
-    padding: 16px;
+    min-width: 90px;
+    padding: 12px 14px;
   }
 }
 
 @media (max-width: 480px) {
-  .admin-page-header {
-    padding: 12px;
-    gap: 15px;
-  }
-
-  .header-content h1 {
-    font-size: 1.3rem;
-  }
-
-  .header-stats {
-    width: 100%;
-    gap: 8px;
-  }
-
-  .quick-stat {
-    padding: 10px 12px;
-    min-width: 70px;
-  }
-
-  .stat-value {
-    font-size: 1.2rem;
-  }
-
-  .stat-label {
-    font-size: 0.7rem;
-  }
-
   .admin-content-area {
     padding: 12px;
+  }
+
+  .admin-page-header {
+    padding: 16px;
   }
 }

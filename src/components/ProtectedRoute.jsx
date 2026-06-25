@@ -10,7 +10,7 @@ export function ProtectedRoute({ children, requiredRole = null }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" />
+    return <Navigate to="/" />
   }
 
   if (requiredRole && userRole !== requiredRole) {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../services/firebase'
-import { collection, getDocs, query, orderBy, doc, updateDoc } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 import { Bar, Pie } from 'react-chartjs-2'
 import {
@@ -16,12 +16,20 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js'
+import { Edit, Trash2, Store } from 'lucide-react'
+import { ProductModal } from '../components/ProductModal'
 import AdminSidebar from '../components/AdminSidebar'
+import { formatPrice } from '../utils/rating'
 import '../css/AdminOrdersDashboard.css'
 import '../css/AdminDashboardLayout.css'
+import '../css/DashboardTheme.css'
 import AdminOrders from '../components/AdminOrders'
 import AdminUsersDashboard from '../components/AdminUsersDashboard'
 import AdminSellerStoreView from '../components/AdminSellerStoreView'
+import AdminProductsDashboard from '../components/AdminProductsDashboard'
+import AdminCategoriesDashboard from '../components/AdminCategoriesDashboard'
+import AdminSellerPerformance from '../components/AdminSellerPerformance'
+import AdminReports from '../components/AdminReports'
 
 ChartJS.register(
   CategoryScale,
@@ -49,6 +57,8 @@ export function AdminOrdersDashboard() {
   const [activeView, setActiveView] = useState('analytics')
   const [activeSubView, setActiveSubView] = useState('sales-analytics')
   const [selectedSeller, setSelectedSeller] = useState(null)
+  const [editingProduct, setEditingProduct] = useState(null)
+  const [showEditModal, setShowEditModal] = useState(false)
 
   useEffect(() => {
     if (!user || userRole !== 'admin') {
@@ -64,7 +74,6 @@ export function AdminOrdersDashboard() {
   const fetchAllOrders = async () => {
     try {
       setLoading(true)
-      // Fetch all orders, sorted by creation date (oldest first - FCFS)
       const q = query(collection(db, 'orders'), orderBy('createdAt', 'asc'))
       const querySnapshot = await getDocs(q)
       const ordersList = []
@@ -113,9 +122,8 @@ export function AdminOrdersDashboard() {
         updatedAt: new Date(),
       })
 
-      // Update local state
-      setAllOrders(
-        allOrders.map((order) =>
+      setAllOrders(prevOrders =>
+        prevOrders.map((order) =>
           order.id === orderId ? { ...order, status: newStatus } : order
         )
       )
@@ -150,18 +158,19 @@ export function AdminOrdersDashboard() {
 
   const handleDeleteUser = async (userId) => {
     try {
+      if (!window.confirm('Are you sure you want to delete this user?')) return;
+      
       const userRef = doc(db, 'users', userId)
       await updateDoc(userRef, {
         deleted: true,
         deletedAt: new Date(),
       })
 
-      // Update local state
-      setAllUsers(allUsers.filter((user) => user.id !== userId))
+      setAllUsers(prev => prev.filter((user) => user.id !== userId))
       alert('User deleted successfully')
     } catch (err) {
       console.error('Error deleting user:', err)
-      alert('Failed to delete user. Please try again.')
+      alert('Failed to delete user: ' + err.message)
     }
   }
 
@@ -173,18 +182,15 @@ export function AdminOrdersDashboard() {
         updatedAt: new Date(),
       })
 
-      // Update local state
-      setAllUsers(
-        allUsers.map((user) =>
+      setAllUsers(prev => 
+        prev.map((user) =>
           user.id === userId ? { ...user, role: newRole } : user
         )
       )
-      alert(
-        `User role updated to ${newRole === 'admin' ? 'Admin' : newRole === 'seller' ? 'Seller' : 'Customer'}`,
-      )
+      alert(`User role updated to ${newRole}`)
     } catch (err) {
       console.error('Error updating user role:', err)
-      alert('Failed to update user role. Please try again.')
+      alert('Failed to update user role: ' + err.message)
     }
   }
 
@@ -201,9 +207,11 @@ export function AdminOrdersDashboard() {
         updatedAt: new Date(),
       })
       
-      setAllProducts(allProducts.map(p => 
-        p.id === productId ? { ...p, stock: parseInt(newStock) || 0 } : p
-      ))
+      setAllProducts(prevProducts => 
+        prevProducts.map(p => 
+          p.id === productId ? { ...p, stock: parseInt(newStock) || 0 } : p
+        )
+      )
       alert('Stock updated successfully')
     } catch (err) {
       console.error('Error updating stock:', err)
@@ -212,19 +220,26 @@ export function AdminOrdersDashboard() {
   }
 
   const handleAdminDeleteProduct = async (productId) => {
-    if (!window.confirm('Are you sure you want to delete this product?')) return
     try {
       const productRef = doc(db, 'products', productId)
-      await updateDoc(productRef, {
-        deleted: true,
-        deletedAt: new Date(),
-      })
-      setAllProducts(allProducts.filter(p => p.id !== productId))
+      await deleteDoc(productRef)
+      setAllProducts(prev => prev.filter(p => p.id !== productId))
       alert('Product deleted successfully')
     } catch (err) {
       console.error('Error deleting product:', err)
-      alert('Failed to delete product')
+      alert('Failed to delete product: ' + err.message)
     }
+  }
+
+  const handleAdminEditProduct = (productId, productData) => {
+    setEditingProduct(productData)
+    setShowEditModal(true)
+  }
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false)
+    setEditingProduct(null)
+    fetchAllProducts() // Refresh after edit
   }
 
   const formatDate = (timestamp) => {
@@ -275,7 +290,7 @@ export function AdminOrdersDashboard() {
     return Object.entries(grouped).sort()
   }
 
-  const analyticsData = getOrdersByTimeframe()
+  const analyticsData = React.useMemo(() => getOrdersByTimeframe(), [allOrders, analyticsTimeframe])
 
   const getProductStats = () => {
     const productMap = {}
@@ -294,25 +309,95 @@ export function AdminOrdersDashboard() {
     return { productMap, totalProducts }
   }
 
-  const { productMap, totalProducts } = getProductStats()
+  const { productMap, totalProducts } = React.useMemo(() => getProductStats(), [allOrders])
 
-  const barChartData = {
+  const barChartData = React.useMemo(() => ({
     labels: analyticsData.map(([period]) => period),
     datasets: [
-      { label: 'Total Orders', data: analyticsData.map(([, data]) => data.total), backgroundColor: '#007bff', borderColor: '#0056b3', borderWidth: 1 },
-      { label: 'Completed', data: analyticsData.map(([, data]) => data.completed), backgroundColor: '#28a745', borderColor: '#218838', borderWidth: 1 },
-      { label: 'Pending', data: analyticsData.map(([, data]) => data.pending), backgroundColor: '#ffc107', borderColor: '#ff9800', borderWidth: 1 },
+      {
+        label: 'Total Orders',
+        data: analyticsData.map(([, data]) => data.total),
+        borderColor: '#2E7D32',
+        backgroundColor: 'rgba(46, 125, 50, 0.08)',
+        borderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        pointBackgroundColor: '#2E7D32',
+        tension: 0.35,
+        fill: true,
+      },
+      {
+        label: 'Completed',
+        data: analyticsData.map(([, data]) => data.completed),
+        borderColor: '#43A047',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        pointBackgroundColor: '#43A047',
+        tension: 0.35,
+        fill: false,
+      },
+      {
+        label: 'Pending',
+        data: analyticsData.map(([, data]) => data.pending),
+        borderColor: '#F57C00',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        borderDash: [6, 4],
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        pointBackgroundColor: '#F57C00',
+        tension: 0.35,
+        fill: false,
+      },
     ],
-  }
+  }), [analyticsData])
 
   const barChartOptions = {
     responsive: true,
-    maintainAspectRatio: true,
-    plugins: { legend: { position: 'top' }, title: { display: true, text: `Orders Over Time (${analyticsTimeframe.charAt(0).toUpperCase() + analyticsTimeframe.slice(1)})` } },
-    scales: { y: { beginAtZero: true } },
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+        align: 'end',
+        labels: {
+          boxWidth: 12,
+          padding: 14,
+          font: { size: 12, family: 'Inter' },
+          usePointStyle: true,
+        },
+      },
+      title: { display: false },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: {
+          maxRotation: 45,
+          minRotation: 0,
+          font: { size: 11 },
+          maxTicksLimit: 12,
+        },
+      },
+      y: {
+        beginAtZero: true,
+        ticks: {
+          stepSize: 1,
+          font: { size: 11 },
+          precision: 0,
+        },
+        grid: { color: 'rgba(0, 0, 0, 0.06)' },
+      },
+    },
+    interaction: { mode: 'nearest', axis: 'x', intersect: false },
   }
 
-  const pieChartData = { labels: Object.keys(productMap), datasets: [{ data: Object.values(productMap), backgroundColor: ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6f42c1', '#e83e8c', '#fd7e14', '#20c997', '#6c757d'], borderColor: '#fff', borderWidth: 2 }] }
+  const pieChartData = React.useMemo(() => ({ labels: Object.keys(productMap), datasets: [{ data: Object.values(productMap), backgroundColor: ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6f42c1', '#e83e8c', '#fd7e14', '#20c997', '#6c757d'], borderColor: '#fff', borderWidth: 2 }] }), [productMap])
 
   const pieChartOptions = {
     responsive: true,
@@ -362,212 +447,253 @@ export function AdminOrdersDashboard() {
   if (loading && allOrders.length === 0 && allUsers.length === 0) {
     return (
       <div className="admin-dashboard-layout">
-        <AdminSidebar activeView={activeView} setActiveView={setActiveView} activeSubView={activeSubView} setActiveSubView={setActiveSubView} />
-        <main className="admin-main-content">
-          <div className="admin-page-header">
-            <div className="header-content">
-              <h1>Admin Dashboard</h1>
-              <p className="header-subtitle">Loading Platform Data...</p>
+        <div className="dashboard-shell-inner">
+          <AdminSidebar activeView={activeView} setActiveView={setActiveView} activeSubView={activeSubView} setActiveSubView={setActiveSubView} />
+          <main className="admin-main-content dashboard-main-panel">
+            <div className="admin-page-header">
+              <div className="header-content">
+                <h1>Admin Dashboard</h1>
+                <p className="header-subtitle">Loading Platform Data...</p>
+              </div>
             </div>
-          </div>
-          <div className="admin-content-area" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-            <div className="loading-spinner">Initializing Dashboard...</div>
-          </div>
-        </main>
+            <div className="admin-content-area" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+              <div className="loading-spinner">Initializing Dashboard...</div>
+            </div>
+          </main>
+        </div>
       </div>
     )
   }
 
+  const renderViewHeader = (title, subtitle) => (
+    <div className="dashboard-hero">
+      <div className="hero-content">
+        <h1>{title}</h1>
+        <p>{subtitle}</p>
+      </div>
+    </div>
+  )
+
   return (
     <div className="admin-dashboard-layout">
-      <AdminSidebar 
-        activeView={activeView} 
-        setActiveView={setActiveView}
-        activeSubView={activeSubView}
-        setActiveSubView={setActiveSubView}
-      />
-      
-      <main className="admin-main-content">
-        {/* Header */}
-        <div className="admin-page-header">
-          <div className="header-content">
-            <h1>Admin Dashboard</h1>
-            <p className="header-subtitle">
-              {activeView === 'analytics' && 'Platform Analytics & Insights'}
-              {activeView === 'users' && 'User Management'}
-              {activeView === 'orders' && 'Order Management'}
-            </p>
-          </div>
-          <div className="header-stats">
-            <div className="quick-stat">
-              <span className="stat-value">{platformStats.totalSales.toFixed(2)}</span>
-              <span className="stat-label">Total Sales</span>
-            </div>
-            <div className="quick-stat">
-              <span className="stat-value">{allOrders.length}</span>
-              <span className="stat-label">Orders</span>
-            </div>
-            <div className="quick-stat">
-              <span className="stat-value">{userStats.total}</span>
-              <span className="stat-label">Users</span>
-            </div>
-          </div>
-        </div>
+      <div className="dashboard-shell-inner">
+        <AdminSidebar
+          activeView={activeView}
+          setActiveView={setActiveView}
+          activeSubView={activeSubView}
+          setActiveSubView={setActiveSubView}
+        />
 
-        {/* Content Area */}
-        <div className="admin-content-area">
+        <main className="admin-main-content dashboard-main-panel">
+          <div className="admin-content-area">
           {activeView === 'analytics' && (
-            <AdminOrders
-              loading={loading}
-              error={error}
-              filteredOrders={filteredOrders}
-              stats={stats}
-              platformStats={platformStats}
-              filterStatus={filterStatus}
-              setFilterStatus={setFilterStatus}
-              updateOrderStatus={updateOrderStatus}
-              formatDate={formatDate}
-              analyticsTimeframe={analyticsTimeframe}
-              setAnalyticsTimeframe={setAnalyticsTimeframe}
-              analyticsData={analyticsData}
-              productMap={productMap}
-              totalProducts={totalProducts}
-              barChartData={barChartData}
-              barChartOptions={barChartOptions}
-              pieChartData={pieChartData}
-              pieChartOptions={pieChartOptions}
-              activeSubView={activeSubView}
-              setActiveSubView={setActiveSubView}
-            />
+            <>
+              {renderViewHeader('Platform Analytics', 'Monitor platform-wide sales and growth')}
+              <AdminOrders
+                loading={loading}
+                error={error}
+                filteredOrders={filteredOrders}
+                stats={stats}
+                platformStats={platformStats}
+                filterStatus={filterStatus}
+                setFilterStatus={setFilterStatus}
+                updateOrderStatus={updateOrderStatus}
+                formatDate={formatDate}
+                analyticsTimeframe={analyticsTimeframe}
+                setAnalyticsTimeframe={setAnalyticsTimeframe}
+                analyticsData={analyticsData}
+                productMap={productMap}
+                totalProducts={totalProducts}
+                barChartData={barChartData}
+                barChartOptions={barChartOptions}
+                pieChartData={pieChartData}
+                pieChartOptions={pieChartOptions}
+                activeSubView={activeSubView}
+                setActiveSubView={setActiveSubView}
+              />
+            </>
           )}
 
           {activeView === 'users' && (
-            <AdminUsersDashboard
-              loading={loading}
-              error={error}
-              allUsers={allUsers.filter(u => !u.deleted)}
-              stats={userStats}
-              filterRole={filterRole}
-              setFilterRole={setFilterRole}
-              handleDeleteUser={handleDeleteUser}
-              handleChangeRole={handleChangeRole}
-              formatDate={formatDate}
-              activeSubView={activeSubView}
-              onViewStore={handleViewStore}
-            />
+            <>
+              {renderViewHeader('User Management', 'Manage platform members and permissions')}
+              <AdminUsersDashboard
+                loading={loading}
+                error={error}
+                allUsers={allUsers.filter(u => !u.deleted)}
+                stats={userStats}
+                filterRole={filterRole}
+                setFilterRole={setFilterRole}
+                handleDeleteUser={handleDeleteUser}
+                handleChangeRole={handleChangeRole}
+                formatDate={formatDate}
+                activeSubView={activeSubView}
+                onViewStore={handleViewStore}
+              />
+            </>
+          )}
+
+          {activeView === 'seller-performance' && (
+            <AdminSellerPerformance />
+          )}
+
+          {activeView === 'categories' && (
+            <AdminCategoriesDashboard />
           )}
 
           {activeView === 'seller-store' && selectedSeller && (
-            <AdminSellerStoreView 
-              seller={selectedSeller} 
-              onBack={() => setActiveView('users')} 
-            />
+            <>
+              {renderViewHeader(selectedSeller.storeName || 'Seller Store', `Moderating products for ${selectedSeller.email}`)}
+              <AdminSellerStoreView 
+                seller={selectedSeller} 
+                onBack={() => setActiveView('users')} 
+              />
+            </>
+          )}
+
+          {activeView === 'products' && (
+            <>
+              {renderViewHeader('Product Moderation', 'Review and manage catalog items')}
+              <AdminProductsDashboard
+                allProducts={allProducts}
+                onDeleteProduct={handleAdminDeleteProduct}
+                onUpdateStock={handleAdminUpdateStock}
+                onEditProduct={handleAdminEditProduct}
+              />
+            </>
           )}
 
           {activeView === 'inventory' && (
             <div className="admin-inventory-container">
               {activeSubView === 'inventory-overview' && (
-                <div className="inventory-grid-admin">
-                  <div className="admin-section-header">
-                    <h2>Global Inventory Overview</h2>
-                    <p>Monitoring {allProducts.length} products across all sellers</p>
+                <>
+                  {renderViewHeader('Global Inventory', `Monitoring ${allProducts.filter(p => !p.deleted).length} products across all sellers`)}
+                  <div className="inventory-grid-admin">
+                    <div className="admin-inventory-table-wrapper">
+                      <table className="admin-table">
+                        <thead>
+                          <tr>
+                            <th>Product</th>
+                            <th>Seller</th>
+                            <th>Price</th>
+                            <th>Stock</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {allProducts.filter(p => !p.deleted).map(product => {
+                            const isOutOfStock = (product.stock || 0) <= 0
+                            const isLowStock = (product.stock || 0) <= (product.lowStockThreshold || 5)
+                            return (
+                              <tr key={product.id}>
+                                <td>
+                                  <div className="product-cell-admin">
+                                    <img src={product.imageUrl} alt="" className="mini-thumb" />
+                                    <span>{product.name}</span>
+                                  </div>
+                                </td>
+                                <td>{product.storeName || 'N/A'}</td>
+                                <td>{formatPrice(product.price)}</td>
+                                <td>
+                                  <input 
+                                    type="number" 
+                                    defaultValue={product.stock} 
+                                    className="admin-stock-input"
+                                    onBlur={(e) => handleAdminUpdateStock(product.id, e.target.value)}
+                                  />
+                                </td>
+                                <td>
+                                  <span className={`status-tag ${isOutOfStock ? 'out' : isLowStock ? 'low' : 'ok'}`}>
+                                    {isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock' : 'Healthy'}
+                                  </span>
+                                </td>
+                                <td>
+                                  <div className="admin-actions-cell">
+                                    <button 
+                                      className="action-btn"
+                                      onClick={() => handleAdminEditProduct(product.id, product)}
+                                      title="Edit Product"
+                                    >
+                                      <Edit size={16} />
+                                    </button>
+                                    <button 
+                                      className="btn-admin-delete"
+                                      onClick={() => handleAdminDeleteProduct(product.id)}
+                                      title="Delete Product"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                  
-                  <div className="admin-inventory-table-wrapper">
-                    <table className="admin-table">
-                      <thead>
-                        <tr>
-                          <th>Product</th>
-                          <th>Seller</th>
-                          <th>Price</th>
-                          <th>Stock</th>
-                          <th>Status</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {allProducts.filter(p => !p.deleted).map(product => {
-                          const isOutOfStock = (product.stock || 0) <= 0
-                          const isLowStock = (product.stock || 0) <= (product.lowStockThreshold || 5)
-                          return (
-                            <tr key={product.id}>
-                              <td>
-                                <div className="product-cell-admin">
-                                  <img src={product.imageUrl} alt="" className="mini-thumb" />
-                                  <span>{product.name}</span>
-                                </div>
-                              </td>
-                              <td>{product.storeName || 'N/A'}</td>
-                              <td>₱{product.price?.toFixed(2)}</td>
-                              <td>
-                                <input 
-                                  type="number" 
-                                  defaultValue={product.stock} 
-                                  className="admin-stock-input"
-                                  onBlur={(e) => handleAdminUpdateStock(product.id, e.target.value)}
-                                />
-                              </td>
-                              <td>
-                                <span className={`status-tag ${isOutOfStock ? 'out' : isLowStock ? 'low' : 'ok'}`}>
-                                  {isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock' : 'Healthy'}
-                                </span>
-                              </td>
-                              <td>
-                                <div className="admin-actions-cell">
-                                  <button 
-                                    className="btn-admin-delete"
-                                    onClick={() => handleAdminDeleteProduct(product.id)}
-                                  >
-                                    🗑️ Delete
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                </>
               )}
 
               {activeSubView === 'low-stock-alerts' && (
-                <div className="inventory-grid-admin">
-                  <div className="admin-section-header">
-                    <h2 className="warning-text">⚠️ Low Stock Alerts</h2>
-                    <p>Critical attention needed for these items</p>
-                  </div>
-                  
-                  <div className="alerts-list-admin">
-                    {allProducts.filter(p => !p.deleted && (p.stock || 0) <= (p.lowStockThreshold || 5)).length > 0 ? (
-                      allProducts.filter(p => !p.deleted && (p.stock || 0) <= (p.lowStockThreshold || 5)).map(product => (
-                        <div key={product.id} className={`admin-alert-card ${(product.stock || 0) <= 0 ? 'critical' : 'warning'}`}>
-                          <div className="alert-info">
-                            <h3>{product.name}</h3>
-                            <p>Seller: {product.storeName}</p>
-                            <p className="stock-info">Current Stock: <strong>{product.stock || 0}</strong> (Threshold: {product.lowStockThreshold || 5})</p>
+                <>
+                  {renderViewHeader('Low Stock Alerts', 'Items requiring immediate attention')}
+                  <div className="inventory-grid-admin">
+                    <div className="alerts-list-admin">
+                      {allProducts.filter(p => !p.deleted && (p.stock || 0) <= (p.lowStockThreshold || 5)).length > 0 ? (
+                        allProducts.filter(p => !p.deleted && (p.stock || 0) <= (p.lowStockThreshold || 5)).map(product => (
+                          <div key={product.id} className={`admin-alert-card ${(product.stock || 0) <= 0 ? 'critical' : 'warning'}`}>
+                            <div className="alert-info">
+                              <h3>{product.name}</h3>
+                              <p>Seller: {product.storeName}</p>
+                              <p className="stock-info">Current Stock: <strong>{product.stock || 0}</strong> (Threshold: {product.lowStockThreshold || 5})</p>
+                            </div>
+                            <div className="alert-actions">
+                              <button onClick={() => navigate('/shop')} title="View in Shop">
+                                <Store size={18} />
+                              </button>
+                              <button 
+                                className="primary" 
+                                onClick={() => handleAdminEditProduct(product.id, product)}
+                                title="Update Product / Stock"
+                              >
+                                <Edit size={18} />
+                              </button>
+                            </div>
                           </div>
-                          <div className="alert-actions">
-                            <button onClick={() => navigate('/shop')}>View in Shop</button>
-                            <button className="primary" onClick={() => {
-                              const newStock = prompt('Enter new stock level:', product.stock)
-                              if (newStock !== null) handleAdminUpdateStock(product.id, newStock)
-                            }}>Update Stock</button>
-                          </div>
+                        ))
+                      ) : (
+                        <div className="no-alerts">
+                          <p>🎉 All products are well-stocked!</p>
                         </div>
-                      ))
-                    ) : (
-                      <div className="no-alerts">
-                        <p>🎉 All products are well-stocked!</p>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
+                </>
               )}
             </div>
           )}
+
+          {activeView === 'reports' && (
+            <>
+              {renderViewHeader('Store Reports', 'Review and manage user-submitted store reports')}
+              <AdminReports />
+            </>
+          )}
         </div>
-      </main>
+        </main>
+      </div>
+
+      {showEditModal && editingProduct && (
+        <ProductModal
+          isOpen={showEditModal}
+          editingProduct={editingProduct}
+          category={editingProduct.category}
+          onClose={handleCloseEditModal}
+          onProductAdded={handleCloseEditModal}
+        />
+      )}
     </div>
   )
 }

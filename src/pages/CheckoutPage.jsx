@@ -5,6 +5,7 @@ import { collection, getDocs, query, where, doc, runTransaction, serverTimestamp
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import { Toast } from '../components/Toast'
+import { formatPrice } from '../utils/rating'
 import '../css/CheckoutPage.css'
 
 export function CheckoutPage() {
@@ -107,7 +108,7 @@ export function CheckoutPage() {
         <div className="checkout-container">
           <div className="empty-state">
             <p>Please log in to proceed with checkout</p>
-            <button onClick={() => navigate('/login')} className="login-btn">
+            <button onClick={() => navigate('/')} className="login-btn">
               Go to Login
             </button>
           </div>
@@ -163,6 +164,7 @@ export function CheckoutPage() {
       if (itemsWithoutSeller.length > 0) {
         console.error('Items missing sellerId:', itemsWithoutSeller)
         setError('Error: Some items are missing seller information. Please clear cart and re-add items.')
+        setLoading(false)
         return
       }
 
@@ -180,6 +182,7 @@ export function CheckoutPage() {
 
       if (sellerIds.length === 0) {
         setError('No valid items found in cart.')
+        setLoading(false)
         return
       }
 
@@ -339,13 +342,13 @@ export function CheckoutPage() {
                     <div className="price-change-info">
                       <p className="product-name">{change.productName}</p>
                       <p className="price-change-details">
-                        Qty: {change.quantity} | Old: ₱{change.oldPrice.toFixed(2)} → New: ₱{change.newPrice.toFixed(2)}
+                        Qty: {change.quantity} | Old: {formatPrice(change.oldPrice)} → New: {formatPrice(change.newPrice)}
                       </p>
                     </div>
                     <div className="price-change-amount">
-                      <p className="old-subtotal">₱{change.oldSubtotal.toFixed(2)}</p>
+                      <p className="old-subtotal">{formatPrice(change.oldSubtotal)}</p>
                       <p className={`new-subtotal ${change.newPrice > change.oldPrice ? 'price-increase' : 'price-decrease'}`}>
-                        ₱{change.newSubtotal.toFixed(2)}
+                        {formatPrice(change.newSubtotal)}
                       </p>
                     </div>
                   </div>
@@ -355,19 +358,19 @@ export function CheckoutPage() {
               <div className="price-warning-summary">
                 <div className="summary-row">
                   <span>Original Total:</span>
-                  <span className="old-price">₱{(getTotalPrice() - priceDifference).toFixed(2)}</span>
+                  <span className="old-price">{formatPrice(getTotalPrice() - priceDifference)}</span>
                 </div>
                 <div className="summary-row">
                   <span>New Total:</span>
                   <span className={`new-price ${priceDifference > 0 ? 'price-increase' : 'price-decrease'}`}>
-                    ₱{getTotalPrice().toFixed(2)}
+                    {formatPrice(getTotalPrice())}
                   </span>
                 </div>
                 {priceDifference !== 0 && (
                   <div className="summary-row difference">
                     <span>Difference:</span>
                     <span className={priceDifference > 0 ? 'price-increase' : 'price-decrease'}>
-                      {priceDifference > 0 ? '+' : ''}₱{priceDifference.toFixed(2)}
+                      {priceDifference > 0 ? '+' : ''}{formatPrice(Math.abs(priceDifference))}
                     </span>
                   </div>
                 )}
@@ -465,7 +468,7 @@ export function CheckoutPage() {
                     {cart.map(item => (
                       <div key={item.id} className="summary-item">
                         <span>{item.name} x {item.quantity}</span>
-                        <span>₱{(item.price * item.quantity).toFixed(2)}</span>
+                        <span>{formatPrice(item.price * item.quantity)}</span>
                       </div>
                     ))}
                   </div>
@@ -474,16 +477,16 @@ export function CheckoutPage() {
                   
                   <div className="summary-item">
                     <span>Subtotal</span>
-                    <span>₱{getTotalPrice().toFixed(2)}</span>
+                    <span>{formatPrice(getTotalPrice())}</span>
                   </div>
                   <div className="summary-item">
                     <span>Delivery Fee</span>
-                    <span>₱0.00</span>
+                    <span>{formatPrice(0)}</span>
                   </div>
 
                   <div className="summary-total">
                     <span>Total</span>
-                    <span>₱{getTotalPrice().toFixed(2)}</span>
+                    <span>{formatPrice(getTotalPrice())}</span>
                   </div>
 
                   {error && <p className="error-text" style={{ color: 'var(--danger)', marginTop: '20px', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase' }}>{error}</p>}

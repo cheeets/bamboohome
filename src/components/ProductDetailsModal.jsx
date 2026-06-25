@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../services/firebase'
-import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, arrayUnion, addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
-import { SellerStoreModal } from './SellerStoreModal'
+import { rateStore, calculateAverageRating, getStockStatus, formatPrice } from '../utils/rating'
+import { MessageCircle, Minus, Plus, ShoppingCart, X, Flag } from 'lucide-react'
 import '../css/ProductDetailsModal.css'
 
 export function ProductDetailsModal({ isOpen, product, onClose }) {
@@ -12,9 +13,7 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
   const { addToCart } = useCart()
   const navigate = useNavigate()
   const [isAdding, setIsAdding] = useState(false)
-  const [showSellerStore, setShowSellerStore] = useState(false)
   const [sellerData, setSellerData] = useState(null)
-  const [loadingSellerData, setLoadingSellerData] = useState(false)
   const [userRating, setUserRating] = useState(0)
   const [hoverRating, setHoverRating] = useState(0)
   const [submittingRating, setSubmittingRating] = useState(false)
@@ -22,6 +21,10 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
   const [hoverStoreRating, setHoverStoreRating] = useState(0)
   const [submittingStoreRating, setSubmittingStoreRating] = useState(false)
   const [buyQuantity, setBuyQuantity] = useState(1)
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [reportReason, setReportReason] = useState('')
+  const [reportDetails, setReportDetails] = useState('')
+  const [submittingReport, setSubmittingReport] = useState(false)
 
   useEffect(() => {
     if (isOpen && product?.sellerId) {
@@ -32,7 +35,6 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
 
   const fetchSellerData = async () => {
     try {
-      setLoadingSellerData(true)
       const sellerDocRef = doc(db, 'users', product.sellerId)
       const sellerDocSnap = await getDoc(sellerDocRef)
       if (sellerDocSnap.exists()) {
@@ -40,15 +42,13 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
       }
     } catch (err) {
       console.error('Error fetching seller data:', err)
-    } finally {
-      setLoadingSellerData(false)
     }
   }
 
   const handleRateProduct = async (rating) => {
     if (!user) {
       alert('Please login to rate this product')
-      navigate('/login')
+      navigate('/')
       onClose()
       return
     }
@@ -89,41 +89,66 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
   const handleRateStore = async (rating) => {
     if (!user) {
       alert('Please login to rate this store')
-      navigate('/login')
+      navigate('/')
       onClose()
       return
     }
 
     try {
       setSubmittingStoreRating(true)
-      const sellerRef = doc(db, 'users', product.sellerId)
-      
-      // Check if user already rated
-      const sellerSnap = await getDoc(sellerRef)
-      if (sellerSnap.exists()) {
-        const currentData = sellerSnap.data()
-        const existingRating = currentData.storeRatings?.find(r => r.userId === user.uid)
-        if (existingRating) {
-          alert('You have already rated this store.')
-          setSubmittingStoreRating(false)
-          return
-        }
+      const success = await rateStore(product.sellerId, user.uid, rating)
+      if (success) {
+        setStoreRating(rating)
+        alert('Thank you for rating this store!')
+        // Refresh seller data to show new rating
+        fetchSellerData()
       }
-
-      await updateDoc(sellerRef, {
-        storeRatings: arrayUnion({
-          userId: user.uid,
-          rating: rating,
-          createdAt: new Date().toISOString()
-        })
-      })
-      setStoreRating(rating)
-      alert('Thank you for rating this store!')
     } catch (err) {
       console.error('Error rating store:', err)
       alert(`Failed to submit store rating: ${err.message}. Please ensure you have applied the latest Firestore rules.`)
     } finally {
       setSubmittingStoreRating(false)
+    }
+  }
+
+  const handleReportStore = async () => {
+    if (!user) {
+      alert('Please login to report a store')
+      return
+    }
+
+    if (!reportReason.trim()) {
+      alert('Please select a reason for reporting')
+      return
+    }
+
+    try {
+      setSubmittingReport(true)
+      await addDoc(collection(db, 'reports'), {
+        reportedBy: user.uid,
+        reporterEmail: user.email,
+        reporterName: user.displayName || user.email,
+        sellerId: product.sellerId,
+        sellerEmail: sellerData?.email || 'Unknown',
+        storeName: product.storeName || sellerData?.storeName || 'Unknown Store',
+        productId: product.id,
+        productName: product.name,
+        reason: reportReason,
+        details: reportDetails.trim() || 'No additional details provided',
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        reviewed: false
+      })
+      
+      alert('Report submitted successfully. Admin will review it soon.')
+      setShowReportModal(false)
+      setReportReason('')
+      setReportDetails('')
+    } catch (err) {
+      console.error('Error submitting report:', err)
+      alert('Failed to submit report. Please try again.')
+    } finally {
+      setSubmittingReport(false)
     }
   }
 
@@ -133,36 +158,29 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
     ? (product.ratings.reduce((acc, curr) => acc + curr.rating, 0) / product.ratings.length).toFixed(1)
     : 0
 
-  const storeAverageRating = sellerData?.storeRatings?.length
-    ? (sellerData.storeRatings.reduce((acc, curr) => acc + curr.rating, 0) / sellerData.storeRatings.length).toFixed(1)
-    : 0
+  const storeAverageRating = calculateAverageRating(sellerData?.storeRatings)
 
-  const getStockStatus = () => {
-    const stock = product.stock || 0
-    const threshold = product.lowStockThreshold || 5
-    if (stock <= 0) return { label: 'Out of Stock', class: 'out-of-stock' }
-    if (stock <= threshold) return { label: 'Low Stock', class: 'low-stock' }
-    return { label: 'In Stock', class: 'in-stock' }
-  }
+  const stockStatus = getStockStatus(product)
 
-  const stockStatus = getStockStatus()
-
-  const handleAddToCart = (product, quantity = 1) => {
+  const handleAddToCart = async (product, quantity = 1) => {
     if (!user) {
-      navigate('/login')
+      alert('Please login to add items to cart')
+      navigate('/')
       onClose()
       return
     }
 
-    if (isAdding) return
+    if (isAdding || !product || quantity < 1) return
 
-    setIsAdding(true)
-    addToCart(product, quantity)
-
-    setTimeout(() => {
-      setIsAdding(false)
+    try {
+      setIsAdding(true)
+      addToCart(product, quantity)
       onClose()
-    }, 800)
+    } catch (err) {
+      console.error('Error adding to cart:', err)
+    } finally {
+      setIsAdding(false)
+    }
   }
 
   return (
@@ -173,7 +191,7 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
       {/* Modal */}
       <div className="product-details-modal">
         <button className="modal-close-btn" onClick={onClose} title="Close">
-          ✕
+          <X size={20} />
         </button>
 
         <div className="product-details-container">
@@ -201,7 +219,7 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
               <span className="rating-text">({averageRating}) • {product.ratings?.length || 0} reviews</span>
             </div>
 
-            {product.storeName && <p className="product-details-stock">Sold by {product.storeName}</p>}
+            {product.storeName && <p className="product-details-seller">Sold by {product.storeName}</p>}
 
             <div className="rate-product-section">
               <p>Rate this product:</p>
@@ -222,15 +240,23 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
             </div>
 
             <div className="product-details-price-row">
-              <span className="product-details-price">₱{Number(product.price || 0).toLocaleString()}</span>
+              <span className="product-details-price">{formatPrice(product.price)}</span>
               <span className={`stock-status-details ${stockStatus.class}`}>
                 {stockStatus.label}
               </span>
             </div>
 
-            <p className="product-details-description">
-              {product.description || 'No description available for this bamboo masterpiece.'}
-            </p>
+            <div className="product-stock-summary">
+              <span className="product-stock-label">Available Stocks</span>
+              <span className="product-stock-value">{product.stock ?? 0}</span>
+            </div>
+
+            <div className="product-details-description-card">
+              <h4>Description</h4>
+              <p className="product-details-description">
+                {product.description || 'No description available for this product.'}
+              </p>
+            </div>
 
             {/* Seller Store Info Section */}
             {sellerData && (
@@ -242,9 +268,6 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
                       src={sellerData.storePhotoUrl}
                       alt={sellerData.storeName}
                       className="seller-store-photo"
-                      onClick={() => setShowSellerStore(true)}
-                      title="View full store"
-                      style={{ cursor: 'pointer' }}
                     />
                   )}
                   <div className="seller-details">
@@ -277,32 +300,19 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
                     </div>
 
                     <button
-                      className="btn-view-store"
-                      onClick={() => setShowSellerStore(true)}
-                    >
-                      👁️ View Store
-                    </button>
-                    <button
                       className="btn-message-seller"
                       onClick={() => navigate('/chat', { state: { sellerId: product.sellerId } })}
-                      style={{
-                        marginTop: '8px',
-                        width: '100%',
-                        padding: '8px',
-                        background: '#EE4D2D',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '0.8rem',
-                        fontWeight: '700',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px'
-                      }}
                     >
-                      💬 Message Seller
+                      <MessageCircle size={14} />
+                      Message Seller
+                    </button>
+                    
+                    <button
+                      className="btn-report-store"
+                      onClick={() => setShowReportModal(true)}
+                    >
+                      <Flag size={14} />
+                      Report Store
                     </button>
                   </div>
                 </div>
@@ -310,57 +320,117 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
             )}
 
             <div className="product-details-actions">
-              <div className="quantity-selector">
-                <button 
-                  className="qty-btn"
-                  onClick={() => setBuyQuantity(Math.max(1, buyQuantity - 1))}
-                  disabled={product.stock <= 0}
+              <span className="quantity-label">Quantity</span>
+              <div className="product-details-cart-row">
+                <div className="quantity-selector">
+                  <button 
+                    className="qty-btn"
+                    onClick={() => setBuyQuantity(Math.max(1, buyQuantity - 1))}
+                    disabled={product.stock <= 0}
+                  >
+                    <Minus size={16} />
+                  </button>
+                  <input 
+                    type="number" 
+                    className="qty-input"
+                    value={buyQuantity}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value)
+                      if (!isNaN(val)) {
+                        setBuyQuantity(Math.min(Math.max(1, val), product.stock || 0))
+                      }
+                    }}
+                    min="1"
+                    max={product.stock || 0}
+                  />
+                  <button 
+                    className="qty-btn"
+                    onClick={() => setBuyQuantity(Math.min(product.stock || 0, buyQuantity + 1))}
+                    disabled={product.stock <= 0 || buyQuantity >= product.stock}
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+
+                <button
+                  className={`btn-add-to-cart ${product.stock <= 0 ? 'btn-disabled' : ''}`}
+                  onClick={() => handleAddToCart(product, buyQuantity)}
+                  disabled={isAdding || product.stock <= 0}
                 >
-                  −
-                </button>
-                <input 
-                  type="number" 
-                  className="qty-input"
-                  value={buyQuantity}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value)
-                    if (!isNaN(val)) {
-                      setBuyQuantity(Math.min(Math.max(1, val), product.stock || 0))
-                    }
-                  }}
-                  min="1"
-                  max={product.stock || 0}
-                />
-                <button 
-                  className="qty-btn"
-                  onClick={() => setBuyQuantity(Math.min(product.stock || 0, buyQuantity + 1))}
-                  disabled={product.stock <= 0 || buyQuantity >= product.stock}
-                >
-                  +
+                  <ShoppingCart size={16} />
+                  {product.stock <= 0 ? 'Out of Stock' : isAdding ? 'Adding...' : 'Add to Cart'}
                 </button>
               </div>
-
-              <button
-                className={`btn-add-to-cart ${product.stock <= 0 ? 'btn-disabled' : ''}`}
-                onClick={() => handleAddToCart(product, buyQuantity)}
-                disabled={isAdding || product.stock <= 0}
-              >
-                {product.stock <= 0 ? 'Out of Stock' : isAdding ? 'Adding...' : 'Add to Cart'}
-              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Seller Store Modal */}
-      {sellerData && (
-        <SellerStoreModal
-          isOpen={showSellerStore}
-          sellerId={product.sellerId}
-          storeName={sellerData.storeName || product.storeName}
-          storePhotoUrl={sellerData.storePhotoUrl}
-          onClose={() => setShowSellerStore(false)}
-        />
+      {/* Report Modal */}
+      {showReportModal && (
+        <div className="report-modal-overlay" onClick={() => setShowReportModal(false)}>
+          <div className="report-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="report-modal-header">
+              <h3><Flag size={20} /> Report Store</h3>
+              <button onClick={() => setShowReportModal(false)}><X size={20} /></button>
+            </div>
+            <div className="report-modal-body">
+              <p className="report-store-name">Reporting: <strong>{product.storeName}</strong></p>
+              
+              <div className="form-group">
+                <label>Reason for Report *</label>
+                <select 
+                  value={reportReason} 
+                  onChange={(e) => setReportReason(e.target.value)}
+                  className="report-select"
+                >
+                  <option value="">Select a reason...</option>
+                  <option value="Counterfeit Products">Counterfeit or Fake Products</option>
+                  <option value="Misleading Information">Misleading Product Information</option>
+                  <option value="Poor Quality">Consistently Poor Quality</option>
+                  <option value="Scam">Suspected Scam or Fraud</option>
+                  <option value="Inappropriate Content">Inappropriate Content</option>
+                  <option value="Harassment">Harassment or Abuse</option>
+                  <option value="Violation">Terms of Service Violation</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Additional Details (Optional)</label>
+                <textarea
+                  value={reportDetails}
+                  onChange={(e) => setReportDetails(e.target.value)}
+                  placeholder="Please provide any additional information that will help us investigate..."
+                  rows="4"
+                  className="report-textarea"
+                  maxLength="500"
+                />
+                <span className="char-count">{reportDetails.length}/500</span>
+              </div>
+
+              <div className="report-warning">
+                <strong>Note:</strong> False reports may result in account suspension. Please only report genuine concerns.
+              </div>
+            </div>
+            <div className="report-modal-footer">
+              <button 
+                className="btn-cancel" 
+                onClick={() => setShowReportModal(false)}
+                disabled={submittingReport}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn-submit-report" 
+                onClick={handleReportStore}
+                disabled={submittingReport || !reportReason}
+              >
+                {submittingReport ? 'Submitting...' : 'Submit Report'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

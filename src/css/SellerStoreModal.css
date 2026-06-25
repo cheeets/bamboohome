@@ -60,6 +60,37 @@
   transform: scale(1.1);
 }
 
+/* Modern Back Button */
+.back-to-shop-btn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #1b4332 0%, #2d5a45 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 1010;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(27, 67, 50, 0.3);
+  transition: all 0.3s ease;
+}
+
+.back-to-shop-btn:hover {
+  background: linear-gradient(135deg, #2d5a45 0%, #1b4332 100%);
+  box-shadow: 0 6px 16px rgba(27, 67, 50, 0.4);
+  transform: translateX(-2px);
+}
+
+.back-to-shop-btn:active {
+  transform: translateX(-1px);
+}
+
 /* Store Header - Shopee Inspired */
 .shopee-store-header {
   position: relative;
@@ -252,8 +283,8 @@
 /* Product Grid */
 .shopee-products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 24px;
 }
 
 .shopee-product-card {
@@ -264,6 +295,7 @@
   border: 1px solid transparent;
   display: flex;
   flex-direction: column;
+  cursor: pointer;
 }
 
 .shopee-product-card:hover {
@@ -276,7 +308,11 @@
   height: 220px;
   position: relative;
   overflow: hidden;
-  background: #f9f9f9;
+  background: #fdfdfd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid #eee;
 }
 
 .shopee-product-image img {
@@ -313,7 +349,7 @@
   flex-direction: column;
 }
 
-.product-name {
+.shopee-product-card .shopee-product-name {
   margin: 0 0 10px 0;
   font-size: 0.95rem;
   color: #333;
@@ -323,6 +359,33 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   height: 2.8rem;
+}
+
+.shopee-product-card .shopee-product-rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.shopee-product-card .shopee-stars {
+  display: flex;
+  gap: 2px;
+}
+
+.shopee-product-card .shopee-star {
+  color: #ddd;
+  font-size: 12px;
+}
+
+.shopee-product-card .shopee-star.filled {
+  color: #FFD700; /* Gold */
+}
+
+.shopee-product-card .shopee-rating-value {
+  font-size: 11px;
+  color: #666;
+  font-weight: 600;
 }
 
 .product-price-row {

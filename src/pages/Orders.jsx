@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { db } from '../services/firebase'
-import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore'
+import { collection, query, where, doc, updateDoc, onSnapshot } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 import { Toast } from '../components/Toast'
 import UserSidebar from '../components/UserSidebar'
+import { formatPrice } from '../utils/rating'
 import '../css/Orders.css'
 import '../css/AdminDashboardLayout.css'
 
@@ -28,21 +29,17 @@ export function Orders() {
 
   useEffect(() => {
     if (!user) {
-      navigate('/login')
+      navigate('/')
       return
     }
 
-    fetchOrders()
-  }, [user, navigate, location])
-
-  const fetchOrders = async () => {
-    try {
-      setLoading(true)
-      const q = query(collection(db, 'orders'), where('userId', '==', user.uid))
-      const querySnapshot = await getDocs(q)
+    // Real-time listener for orders
+    const q = query(collection(db, 'orders'), where('userId', '==', user.uid))
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const ordersList = []
+      const changes = snapshot.docChanges()
 
-      querySnapshot.forEach((doc) => {
+      snapshot.forEach((doc) => {
         ordersList.push({
           id: doc.id,
           ...doc.data(),
@@ -52,14 +49,31 @@ export function Orders() {
       // Sort by date descending
       ordersList.sort((a, b) => (b.createdAt?.toDate?.() || new Date(0)) - (a.createdAt?.toDate?.() || new Date(0)))
       setOrders(ordersList)
-      setError('')
-    } catch (err) {
-      console.error('Error fetching orders:', err)
-      setError('Failed to load orders')
-    } finally {
       setLoading(false)
-    }
-  }
+
+      // Show notifications for status changes
+      changes.forEach((change) => {
+        if (change.type === 'modified') {
+          const data = change.doc.data()
+          const status = normalizeStatus(data.status)
+          
+          if (status === 'processing') {
+            setToastMessage('🎉 Your order has been accepted by the seller!')
+            setToastType('success')
+          } else if (status === 'shipped' || status === 'delivered') {
+            setToastMessage('📦 Your order is ready for delivery!')
+            setToastType('success')
+          }
+        }
+      })
+    }, (err) => {
+      console.error('Error listening to orders:', err)
+      setError('Failed to load orders')
+      setLoading(false)
+    })
+
+    return () => unsubscribe()
+  }, [user, navigate])
 
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A'
@@ -167,31 +181,72 @@ export function Orders() {
           {/* Orders List */}
           {!loading && orders.length > 0 && (
             <div className="orders-list">
-              {orders.map((order) => (
-                <div key={order.id} className="order-card1">
-                  <div className="order-card-header">
-                      <span className="order-id1">Order #{order.id.slice(0, 8).toUpperCase()}</span>
+              {orders.map((order) => {
+                const orderItems = order.products || order.items || []
+                const itemCount = orderItems.reduce((sum, item) => sum + (item.quantity || 1), 0)
+                
+                return (
+                  <div key={order.id} className="order-card1">
+                    <div className="order-card-header">
+                      <div className="order-header-left">
+                        <span className="order-id1">Order #{order.id.slice(0, 8).toUpperCase()}</span>
+                        <span className="order-date">{formatDate(order.createdAt)}</span>
+                      </div>
                       <span className={`order-status status-${normalizeStatus(order.status)}`}>{order.status}</span>
-                  </div>
+                    </div>
 
-                  <div className="order-actionss">
-                    <button
-                      className="btn-view-details"
-                      onClick={() => handleViewDetails(order)}
-                    >
-                      View Details
-                    </button>
-                    {normalizeStatus(order.status) === 'pending' && (
-                      <button
-                        className="btn-cancel-orderr"
-                        onClick={() => handleCancelClick(order.id)}
-                      >
-                        Cancel Order
-                      </button>
-                    )}
+                    {/* Order Items Preview */}
+                    <div className="order-items-preview">
+                      {orderItems.slice(0, 3).map((item, index) => (
+                        <div key={index} className="order-item-mini">
+                          <div className="item-image-wrapper">
+                            {item.image || item.imageUrl ? (
+                              <img src={item.image || item.imageUrl} alt={item.name} className="item-thumbnail" />
+                            ) : (
+                              <div className="item-placeholder">📦</div>
+                            )}
+                          </div>
+                          <div className="item-details">
+                            <span className="item-name">{item.name}</span>
+                            <span className="item-meta">Qty: {item.quantity} × {formatPrice(item.price)}</span>
+                          </div>
+                          <span className="item-subtotal">{formatPrice(item.price * item.quantity)}</span>
+                        </div>
+                      ))}
+                      {orderItems.length > 3 && (
+                        <div className="more-items-indicator">
+                          +{orderItems.length - 3} more item{orderItems.length - 3 > 1 ? 's' : ''}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Order Summary */}
+                    <div className="order-summary-bar">
+                      <div className="summary-info">
+                        <span className="summary-label">{itemCount} item{itemCount > 1 ? 's' : ''}</span>
+                        <span className="summary-divider">•</span>
+                        <span className="summary-total">Total: {formatPrice(order.totalAmount)}</span>
+                      </div>
+                      <div className="order-actionss">
+                        <button
+                          className="btn-view-details"
+                          onClick={() => handleViewDetails(order)}
+                        >
+                          View Details
+                        </button>
+                        {normalizeStatus(order.status) === 'pending' && (
+                          <button
+                            className="btn-cancel-orderr"
+                            onClick={() => handleCancelClick(order.id)}
+                          >
+                            Cancel Order
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -248,7 +303,7 @@ export function Orders() {
                         <span className="modal-item-name">{item.name}</span>
                         <span className="modal-item-qty">Qty: {item.quantity}</span>
                       </div>
-                      <span className="modal-item-subtotal">₱{(item.price * item.quantity).toFixed(2)}</span>
+                      <span className="modal-item-subtotal">{formatPrice(item.price * item.quantity)}</span>
                     </div>
                   ))}
                 </div>
@@ -259,7 +314,7 @@ export function Orders() {
               <div className="summary-section">
                 <div className="summary-item">
                   <span className="summary-label">Total Amount:</span>
-                  <span className="summary-value">₱{selectedOrder.totalAmount?.toFixed(2) || '0.00'}</span>
+                  <span className="summary-value">{formatPrice(selectedOrder.totalAmount)}</span>
                 </div>
                 {selectedOrder.paymentMethod && (
                   <div className="summary-item">

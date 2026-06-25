@@ -1,4 +1,18 @@
 import React, { useState } from 'react'
+import { 
+  Users, 
+  User, 
+  ShieldCheck, 
+  Store, 
+  ShoppingBag, 
+  Search, 
+  Calendar, 
+  Trash2, 
+  X, 
+  CheckCircle2, 
+  AlertCircle,
+  Edit
+} from 'lucide-react'
 import '../css/AdminUsersDashboard.css'
 
 export default function AdminUsersDashboard({
@@ -47,261 +61,184 @@ export default function AdminUsersDashboard({
     }
   }
 
-  const filteredUsers = filterRole === 'all' 
-    ? allUsers.filter(u => 
-        u.email?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.displayName?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : allUsers.filter((u) => 
-        u.role === filterRole && (
-          u.email?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-          u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          u.displayName?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      )
+  const filteredUsers = allUsers.filter(u => {
+    const searchLower = searchTerm.toLowerCase()
+    const matchesSearch = 
+      u.email?.toLowerCase().includes(searchLower) || 
+      u.name?.toLowerCase().includes(searchLower) ||
+      u.displayName?.toLowerCase().includes(searchLower)
+    
+    const matchesRole = filterRole === 'all' || u.role === filterRole
+    
+    return matchesSearch && matchesRole
+  })
 
   const getRoleIcon = (role) => {
     switch(role) {
-      case 'admin': return '👑'
-      case 'seller': return '🏪'
-      case 'user': return '👤'
-      default: return '👤'
+      case 'admin': return <ShieldCheck size={20} />
+      case 'seller': return <Store size={20} />
+      case 'user': return <User size={20} />
+      default: return <User size={20} />
     }
   }
 
   const getRoleColor = (role) => {
     switch(role) {
-      case 'admin': return 'admin'
-      case 'seller': return 'seller'
-      case 'user': return 'customer'
-      default: return 'customer'
+      case 'admin': return 'role-admin'
+      case 'seller': return 'role-seller'
+      case 'user': return 'role-user'
+      default: return 'role-user'
     }
   }
 
   return (
     <>
       <div className="users-management-section">
-        {/* Header */}
         <div className="users-header">
           <div className="header-title-group">
-            <h2>👥 User Management</h2>
-            <p className="header-subtitle">Manage platform users and their roles</p>
+            <h2 className="apd-title-with-icon"><Users size={28} /> User Access Control</h2>
+            <p className="header-subtitle">Manage platform permissions and user roles</p>
           </div>
-          <div className="user-count-display">{filteredUsers.length} Users</div>
+          <div className="user-count-display">{filteredUsers.length} Users Found</div>
         </div>
 
-        {/* Stats Cards */}
         <div className="user-stats-grid">
-          <div className="stat-card stat-total">
-            <div className="stat-icon">📊</div>
-            <div className="stat-content">
-              <h3>Total Users</h3>
-              <p className="stat-value">{stats.total}</p>
+          <div className="stat-card">
+            <div className="stat-icon total"><Users size={20} /></div>
+            <div className="stat-info">
+              <span className="stat-label">Total Users</span>
+              <span className="stat-value">{stats.total}</span>
             </div>
           </div>
-          <div className="stat-card stat-customers">
-            <div className="stat-icon">🛍️</div>
-            <div className="stat-content">
-              <h3>Customers</h3>
-              <p className="stat-value">{stats.customers}</p>
+          <div className="stat-card">
+            <div className="stat-icon customer"><ShoppingBag size={20} /></div>
+            <div className="stat-info">
+              <span className="stat-label">Customers</span>
+              <span className="stat-value">{stats.customers}</span>
             </div>
           </div>
-          <div className="stat-card stat-sellers">
-            <div className="stat-icon">🏪</div>
-            <div className="stat-content">
-              <h3>Sellers</h3>
-              <p className="stat-value">{stats.sellers}</p>
+          <div className="stat-card">
+            <div className="stat-icon seller"><Store size={20} /></div>
+            <div className="stat-info">
+              <span className="stat-label">Sellers</span>
+              <span className="stat-value">{stats.sellers}</span>
             </div>
           </div>
-          <div className="stat-card stat-admins">
-            <div className="stat-icon">👑</div>
-            <div className="stat-content">
-              <h3>Admins</h3>
-              <p className="stat-value">{stats.admins}</p>
+          <div className="stat-card">
+            <div className="stat-icon admin"><ShieldCheck size={20} /></div>
+            <div className="stat-info">
+              <span className="stat-label">Admins</span>
+              <span className="stat-value">{stats.admins}</span>
             </div>
           </div>
         </div>
 
-        {/* Filters Section */}
-        <div className="filters-section">
+        <div className="table-controls">
           <div className="search-box">
+            <Search size={18} />
             <input 
               type="text" 
-              placeholder="🔍 Search by email or name..." 
+              placeholder="Search users..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
             />
           </div>
           
-          <div className="filter-buttons">
-            <button
-              className={`filter-btn ${filterRole === 'all' ? 'active' : ''}`}
-              onClick={() => setFilterRole('all')}
-            >
-              <span className="btn-icon">📋</span>
-              All ({stats.total})
-            </button>
-            <button
-              className={`filter-btn ${filterRole === 'user' ? 'active' : ''}`}
-              onClick={() => setFilterRole('user')}
-            >
-              <span className="btn-icon">🛍️</span>
-              Customers ({stats.customers})
-            </button>
-            <button
-              className={`filter-btn ${filterRole === 'seller' ? 'active' : ''}`}
-              onClick={() => setFilterRole('seller')}
-            >
-              <span className="btn-icon">🏪</span>
-              Sellers ({stats.sellers})
-            </button>
-            <button
-              className={`filter-btn ${filterRole === 'admin' ? 'active' : ''}`}
-              onClick={() => setFilterRole('admin')}
-            >
-              <span className="btn-icon">👑</span>
-              Admins ({stats.admins})
-            </button>
+          <div className="role-filters">
+            <button className={`filter-chip ${filterRole === 'all' ? 'active' : ''}`} onClick={() => setFilterRole('all')}>All</button>
+            <button className={`filter-chip ${filterRole === 'user' ? 'active' : ''}`} onClick={() => setFilterRole('user')}>Customers</button>
+            <button className={`filter-chip ${filterRole === 'seller' ? 'active' : ''}`} onClick={() => setFilterRole('seller')}>Sellers</button>
+            <button className={`filter-chip ${filterRole === 'admin' ? 'active' : ''}`} onClick={() => setFilterRole('admin')}>Admins</button>
           </div>
         </div>
 
-        {loading && <div className="loading-spinner">Loading users...</div>}
-        {error && <div className="error-message">{error}</div>}
+        {loading && <div className="loading-container"><div className="spinner"></div><p>Loading user directory...</p></div>}
+        {error && <div className="error-container"><AlertCircle size={24} /><p>{error}</p></div>}
 
-        {!loading && allUsers.length === 0 && (
-          <div className="empty-state">
-            <div className="empty-icon">📭</div>
-            <p>No users found</p>
-          </div>
-        )}
-
-        {!loading && filteredUsers.length === 0 && (
-          <div className="empty-state">
-            <div className="empty-icon">🔍</div>
-            <p>
-              No{' '}
-              {filterRole === 'all'
-                ? 'users'
-                : filterRole === 'admin'
-                  ? 'admins'
-                  : filterRole === 'seller'
-                    ? 'sellers'
-                    : 'customers'}{' '}
-              found
-            </p>
-          </div>
-        )}
-
-        {!loading && filteredUsers.length > 0 && (
-          <div className="users-list-container">
-            {filteredUsers.map((user) => (
-              <div key={user.id} className={`user-card role-${getRoleColor(user.role)}`}>
-                <div className="user-card-header">
-                  <div className="user-avatar-group">
-                    <div className={`user-avatar avatar-${getRoleColor(user.role)}`}>
-                      {getRoleIcon(user.role)}
-                    </div>
-                    <div className="user-badges">
-                      <div className="user-info">
-                        <span className="user-name">{user.name || user.displayName || 'No Name'}</span>
-                        <span className="user-email">{user.email}</span>
-                      </div>
-                      <span className={`user-role-badge role-${user.role}`}>
-                        {user.role === 'admin' ? 'Administrator' : user.role === 'seller' ? 'Seller' : 'Customer'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="user-card-quick-info">
-                  <div className="quick-info-item">
-                    <span className="info-label">Joined:</span>
-                    <span className="info-value">{formatDate(user.createdAt)}</span>
-                  </div>
-                  {user.role === 'seller' && user.storeName && (
-                    <div className="quick-info-item">
-                      <span className="info-label">Store:</span>
-                      <span className="info-value">{user.storeName}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="user-card-actions">
-                  {user.role === 'seller' && (
-                    <button
-                      className="action-btn view-store-btn"
-                      onClick={() => onViewStore(user)}
-                    >
-                      <span>🏪</span> View Store
-                    </button>
-                  )}
-                  <button
-                    className="action-btn view-details-btn"
-                    onClick={() => handleViewUser(user)}
-                  >
-                    <span>👁️</span> View Details
-                  </button>
-                  <button
-                    className="action-btn delete-btn"
-                    title="Delete User"
-                    onClick={() => {
-                      if (window.confirm(`Are you sure you want to delete ${user.displayName || user.email}?`)) {
-                        handleDeleteUser(user.id)
-                      }
-                    }}
-                  >
-                    <span>🗑️</span> Delete
-                  </button>
-                </div>
-              </div>
-            ))}
+        {!loading && !error && (
+          <div className="rbac-table-wrapper">
+            <table className="rbac-table">
+              <thead>
+                <tr>
+                  <th>User Details</th>
+                  <th>Current Role</th>
+                  <th>Joined Date</th>
+                  <th>Access Management</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className="empty-row">No users found matching your criteria</td>
+                  </tr>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <tr key={user.id}>
+                      <td>
+                        <div className="user-cell">
+                          <div className={`avatar ${getRoleColor(user.role)}`}>
+                            {user.name?.[0] || user.email?.[0] || 'U'}
+                          </div>
+                          <div className="user-meta">
+                            <span className="name">{user.name || user.displayName || 'No Name'}</span>
+                            <span className="email">{user.email}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`role-tag ${getRoleColor(user.role)}`}>
+                          {getRoleIcon(user.role)}
+                          {user.role}
+                        </span>
+                      </td>
+                      <td>{formatDate(user.createdAt)}</td>
+                      <td>
+                        <div className="action-cell">
+                          {user.role === 'seller' && (
+                            <button className="icon-btn" onClick={() => onViewStore(user)} title="View Store">
+                              <Store size={16} />
+                            </button>
+                          )}
+                          <button className="icon-btn edit" onClick={() => handleViewUser(user)} title="Change Permissions">
+                            <Edit size={16} />
+                          </button>
+                          <button className="icon-btn delete" onClick={() => {
+                            if (window.confirm(`Revoke all access for ${user.email}?`)) {
+                              handleDeleteUser(user.id)
+                            }
+                          }} title="Delete User">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
-      {/* User Details Modal */}
       {showUserDetails && selectedUser && (
         <div className="modal-overlay" onClick={handleCloseDetails}>
-          <div className="modal-content user-details-modal" onClick={(e) => e.stopPropagation()}>
-            {/* Modal Header */}
+          <div className="user-details-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title-group">
-                <div className={`modal-avatar avatar-${getRoleColor(selectedUser.role)}`}>
+                <div className={`modal-avatar ${getRoleColor(selectedUser.role)}`}>
                   {getRoleIcon(selectedUser.role)}
                 </div>
-                <h2>{selectedUser.name || selectedUser.displayName || 'User Details'}</h2>
-              </div>
-              <button className="modal-close-btn" onClick={handleCloseDetails}>✕</button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="modal-body">
-              {/* Personal Information */}
-              <div className="modal-section">
-                <h3 className="section-title">📋 Personal Information</h3>
-                <div className="details-grid">
-                  <div className="detail-row">
-                    <span className="detail-label">Full Name</span>
-                    <span className="detail-value">{selectedUser.name || selectedUser.displayName || 'Not provided'}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">Email Address</span>
-                    <span className="detail-value">{selectedUser.email}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">Account Status</span>
-                    <span className={`detail-badge role-${selectedUser.role}`}>
-                      {selectedUser.role === 'admin' ? '👑 Administrator' : selectedUser.role === 'seller' ? '🏪 Seller' : '👤 Customer'}
-                    </span>
-                  </div>
+                <div>
+                  <h2>Edit Member Role</h2>
+                  <p className="user-email">{selectedUser.email}</p>
                 </div>
               </div>
+              <button className="modal-close-btn" onClick={handleCloseDetails}><X size={20} /></button>
+            </div>
 
-              {/* Account Information */}
+            <div className="modal-body">
               <div className="modal-section">
-                <h3 className="section-title">⏰ Account Information</h3>
+                <h3><Calendar size={18} /> Account Information</h3>
                 <div className="details-grid">
                   <div className="detail-row">
                     <span className="detail-label">Member Since</span>
@@ -316,48 +253,36 @@ export default function AdminUsersDashboard({
                 </div>
               </div>
 
-              {/* Role Management */}
               <div className="modal-section">
-                <h3 className="section-title">🔐 Role Management</h3>
+                <h3><ShieldCheck size={18} /> Role Management</h3>
                 <div className="role-selector-group">
                   <select
                     value={editingRole[selectedUser.id] || selectedUser.role}
                     onChange={(e) => handleRoleChange(selectedUser.id, e.target.value)}
                     className="role-select-input"
                   >
-                    <option value="user">👤 Customer</option>
-                    <option value="seller">🏪 Seller</option>
-                    <option value="admin">👑 Admin</option>
+                    <option value="user">Customer</option>
+                    <option value="seller">Seller</option>
+                    <option value="admin">Admin</option>
                   </select>
                   {editingRole[selectedUser.id] && editingRole[selectedUser.id] !== selectedUser.role && (
-                    <button
-                      className="action-btn save-role-btn"
-                      onClick={() => handleSaveRole(selectedUser.id)}
-                    >
-                      ✓ Save Role
+                    <button className="save-role-btn" onClick={() => handleSaveRole(selectedUser.id)}>
+                      <CheckCircle2 size={14} /> Save Role
                     </button>
                   )}
                 </div>
-                <p className="role-info-text">Changing a user's role will update their permissions immediately.</p>
               </div>
             </div>
 
-            {/* Modal Footer */}
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={handleCloseDetails}>
-                Close
-              </button>
-              <button 
-                className="btn btn-danger"
-                title="Delete this user"
-                onClick={() => {
-                  if (window.confirm(`Are you sure you want to delete ${selectedUser.displayName || selectedUser.email}?`)) {
-                    handleDeleteUser(selectedUser.id)
-                    handleCloseDetails()
-                  }
-                }}
-              >
-                Delete User
+              <button className="btn-secondary" onClick={handleCloseDetails}>Close</button>
+              <button className="btn-danger" onClick={() => {
+                if (window.confirm(`Are you sure you want to delete ${selectedUser.email}?`)) {
+                  handleDeleteUser(selectedUser.id)
+                  handleCloseDetails()
+                }
+              }}>
+                <Trash2 size={14} /> Delete User
               </button>
             </div>
           </div>

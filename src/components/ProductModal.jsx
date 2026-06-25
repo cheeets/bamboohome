@@ -1,15 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { db } from '../services/firebase'
-import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { collection, addDoc, updateDoc, doc, serverTimestamp, getDocs, query, orderBy } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
+import { ImagePlus, UploadCloud } from 'lucide-react'
 import '../css/ProductModal.css'
-
-// Category mapping
-const CATEGORY_MAP = {
-  'chair': 'Chair',
-  'table': 'Table',
-  'sofa': 'Sofa',
-}
 
 export function ProductModal({ isOpen, category, editingProduct, onClose, onProductAdded }) {
   const [productName, setProductName] = useState('')
@@ -23,9 +17,41 @@ export function ProductModal({ isOpen, category, editingProduct, onClose, onProd
   const [error, setError] = useState('')
   const [uploadingImage, setUploadingImage] = useState(false)
   const [modalCategory, setModalCategory] = useState('')
+  const [categories, setCategories] = useState([])
+  const [loadingCategories, setLoadingCategories] = useState(true)
   const { user, storeName } = useAuth()
 
   const [imagePreview, setImagePreview] = useState('')
+  const [isDragOver, setIsDragOver] = useState(false)
+  const fileInputRef = React.useRef(null)
+
+  // Fetch categories from Firestore
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true)
+        const q = query(collection(db, 'categories'), orderBy('createdAt', 'desc'))
+        const querySnapshot = await getDocs(q)
+        const categoriesList = []
+        querySnapshot.forEach((doc) => {
+          categoriesList.push({
+            id: doc.id,
+            ...doc.data(),
+          })
+        })
+        setCategories(categoriesList)
+      } catch (err) {
+        console.error('Error fetching categories:', err)
+        setCategories([])
+      } finally {
+        setLoadingCategories(false)
+      }
+    }
+
+    if (isOpen) {
+      fetchCategories()
+    }
+  }, [isOpen])
 
   // Populate form when editing or category changes
   useEffect(() => {
@@ -57,10 +83,12 @@ export function ProductModal({ isOpen, category, editingProduct, onClose, onProd
     setImageUrl('')
     setImagePreview('')
     setError('')
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0]
+  const handleImageSelection = (file) => {
     if (file) {
       // Validation: Max 5MB
       if (file.size > 5 * 1024 * 1024) {
@@ -78,6 +106,16 @@ export function ProductModal({ isOpen, category, editingProduct, onClose, onProd
       }
       reader.readAsDataURL(file)
     }
+  }
+
+  const handleImageChange = (e) => {
+    handleImageSelection(e.target.files?.[0])
+  }
+
+  const handleImageDrop = (e) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    handleImageSelection(e.dataTransfer.files?.[0])
   }
 
   const compressImage = async (file) => {
@@ -227,7 +265,7 @@ export function ProductModal({ isOpen, category, editingProduct, onClose, onProd
     <div className="modal-overlay1" onClick={onClose}>
       <div className="modal-content1" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{editingProduct ? 'Edit Product' : `Add Product to ${CATEGORY_MAP[modalCategory] || 'Category'}`}</h2>
+          <h2>{editingProduct ? 'Edit Product' : 'Add Product'}</h2>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
 
@@ -262,17 +300,29 @@ export function ProductModal({ isOpen, category, editingProduct, onClose, onProd
 
           <div className="form-group">
             <label htmlFor="category">Category *</label>
-            <select
-              id="category"
-              value={modalCategory}
-              onChange={(e) => setModalCategory(e.target.value)}
-              required
-            >
-              <option value="">Select a category</option>
-              <option value="chair">Chair</option>
-              <option value="table">Table</option>
-              <option value="sofa">Sofa</option>
-            </select>
+            {loadingCategories ? (
+              <select id="category" disabled>
+                <option>Loading categories...</option>
+              </select>
+            ) : categories.length === 0 ? (
+              <div style={{ padding: '10px', color: '#d97706', backgroundColor: '#fef3c7', borderRadius: '6px', fontSize: '14px' }}>
+                No categories found. Please ask your admin to create categories first.
+              </div>
+            ) : (
+              <select
+                id="category"
+                value={modalCategory}
+                onChange={(e) => setModalCategory(e.target.value)}
+                required
+              >
+                <option value="">Select a category</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.icon} {cat.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div className="form-group">
@@ -315,6 +365,33 @@ export function ProductModal({ isOpen, category, editingProduct, onClose, onProd
           <div className="form-group">
             <label htmlFor="image">Product Image {!editingProduct && '*'}</label>
             <div className="image-upload-container">
+              <div
+                className={`upload-dropzone ${isDragOver ? 'drag-over' : ''}`}
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  setIsDragOver(true)
+                }}
+                onDragLeave={() => setIsDragOver(false)}
+                onDrop={handleImageDrop}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    fileInputRef.current?.click()
+                  }
+                }}
+              >
+                <div className="upload-dropzone-icon">
+                  <UploadCloud size={26} />
+                </div>
+                <p className="upload-dropzone-title">Upload product image</p>
+                <p className="upload-dropzone-text">
+                  Click to choose an image or drag and drop it here
+                </p>
+                <span className="upload-dropzone-hint">PNG, JPG, or WEBP recommended</span>
+              </div>
               <input
                 type="file"
                 id="image"
@@ -322,10 +399,36 @@ export function ProductModal({ isOpen, category, editingProduct, onClose, onProd
                 accept="image/*"
                 className="file-input"
                 required={!editingProduct}
+                ref={fileInputRef}
               />
               <div className="image-preview-wrapper">
                 {imagePreview ? (
-                  <img src={imagePreview} alt="Preview" className="image-preview" />
+                  <div className="image-preview-card">
+                    <div className="image-preview-header">
+                      <div className="image-preview-title">
+                        <ImagePlus size={16} />
+                        <span>Selected product image</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-remove-image"
+                        onClick={() => {
+                          setImageFile(null)
+                          setImageUrl('')
+                          setImagePreview('')
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = ''
+                          }
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <img src={imagePreview} alt="Preview" className="image-preview" />
+                    {imageFile && (
+                      <p className="image-file-name">{imageFile.name}</p>
+                    )}
+                  </div>
                 ) : (
                   <div className="image-placeholder">
                     <span>No Image Selected</span>

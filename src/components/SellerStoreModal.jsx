@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../services/firebase'
-import { collection, getDocs, query, where, doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore'
+import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
+import { ProductDetailsModal } from './ProductDetailsModal'
+import { rateStore, calculateAverageRating, formatPrice } from '../utils/rating'
+import { ArrowLeft, MessageCircle, ShoppingCart, User, X } from 'lucide-react'
 import '../css/SellerStoreModal.css'
 
 export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, onClose }) {
@@ -17,17 +20,34 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
   const [hoverRating, setHoverRating] = useState(0)
   const [submittingRating, setSubmittingRating] = useState(false)
   const [activeTab, setActiveTab] = useState('home')
+  const [allCategories, setAllCategories] = useState([])
   const [selectedCategory, setSelectedTabCategory] = useState('all')
-
-  const lastFetchedSellerId = React.useRef(null)
+  const [selectedProduct, setSelectedProduct] = useState(null)
+  const [showProductDetails, setShowProductDetails] = useState(false)
 
   useEffect(() => {
-    if (isOpen && sellerId && lastFetchedSellerId.current !== sellerId) {
+    if (isOpen && sellerId) {
       fetchSellerProducts()
       fetchSellerData()
-      lastFetchedSellerId.current = sellerId
+      fetchAllCategories()
     }
   }, [isOpen, sellerId])
+
+  const fetchAllCategories = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'categories'))
+      const categoriesList = []
+      querySnapshot.forEach((doc) => {
+        categoriesList.push({
+          id: doc.id,
+          ...doc.data(),
+        })
+      })
+      setAllCategories(categoriesList)
+    } catch (err) {
+      console.error('Error fetching categories:', err)
+    }
+  }
 
   const fetchSellerData = async () => {
     try {
@@ -55,33 +75,12 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
 
     try {
       setSubmittingRating(true)
-      const sellerRef = doc(db, 'users', sellerId)
-      
-      // Check if user already rated
-      const sellerSnap = await getDoc(sellerRef)
-      if (sellerSnap.exists()) {
-        const currentData = sellerSnap.data()
-        const existingRating = currentData.storeRatings?.find(r => r.userId === user.uid)
-        if (existingRating) {
-          alert('You have already rated this store.')
-          setSubmittingRating(false)
-          return
-        }
-      }
-
-      await updateDoc(sellerRef, {
-        storeRatings: arrayUnion({
-          userId: user.uid,
-          rating: rating,
-          createdAt: new Date().toISOString()
-        })
-      })
+      await rateStore(sellerId, user.uid, rating)
       setUserRating(rating)
       // Refresh seller data to show new rating
       fetchSellerData()
       alert('Thank you for rating this store!')
     } catch (err) {
-      console.error('Error rating store:', err)
       alert(`Failed to submit store rating: ${err.message}`)
     } finally {
       setSubmittingRating(false)
@@ -129,16 +128,25 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
     console.log('✓ Added to cart:', product.name)
   }
 
-  const calculateAverageRating = () => {
-    if (!sellerData?.storeRatings || sellerData.storeRatings.length === 0) return 0
-    const sum = sellerData.storeRatings.reduce((acc, curr) => acc + curr.rating, 0)
-    return (sum / sellerData.storeRatings.length).toFixed(1)
+  const handleProductClick = (product) => {
+    setSelectedProduct(product)
+    setShowProductDetails(true)
   }
 
-  const averageRating = calculateAverageRating()
+  const calculateProductAverageRating = (product) => {
+    if (!product || !product.ratings || !Array.isArray(product.ratings) || product.ratings.length === 0) return 0
+    const sum = product.ratings.reduce((acc, curr) => acc + (curr.rating || 0), 0)
+    return (sum / product.ratings.length).toFixed(1)
+  }
 
-  // Get unique categories from seller products
-  const storeCategories = ['all', ...new Set(sellerProducts.map(p => p.category).filter(Boolean))]
+  const averageRating = calculateAverageRating(sellerData?.storeRatings)
+  const displayStorePhoto = sellerData?.storePhotoUrl || storePhotoUrl
+
+  // Use all categories from admin
+  const storeCategories = [
+    { id: 'all', name: 'ALL' },
+    ...allCategories
+  ]
 
   const filteredDisplayProducts = sellerProducts.filter(product => {
     if (activeTab === 'home') return true // Show all on home for now or first 8
@@ -149,6 +157,13 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
     return true
   })
 
+  // Helper to get category name by ID
+  const getCategoryName = (id) => {
+    if (id === 'all') return 'All Categories'
+    const cat = allCategories.find(c => c.id === id)
+    return cat ? cat.name : id
+  }
+
   if (!isOpen) return null
 
   return (
@@ -158,8 +173,18 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
 
       {/* Modal */}
       <div className="seller-store-modal shopee-style">
+        {/* Back Button - Modern UI */}
+        <button 
+          className="back-to-shop-btn" 
+          onClick={onClose} 
+          title="Back to Store"
+        >
+          <ArrowLeft size={16} />
+          Back
+        </button>
+
         <button className="modal-close-btn" onClick={onClose} title="Close">
-          ✕
+          <X size={18} />
         </button>
 
         {/* Store Header - Shopee Style */}
@@ -169,10 +194,12 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
           </div>
           <div className="shopee-store-info">
             <div className="shopee-store-avatar">
-              {storePhotoUrl ? (
-                <img src={storePhotoUrl} alt={storeName} />
+              {displayStorePhoto ? (
+                <img src={displayStorePhoto} alt={storeName} />
               ) : (
-                <div className="shopee-avatar-placeholder">👤</div>
+                <div className="shopee-avatar-placeholder">
+                  <User size={42} />
+                </div>
               )}
             </div>
             <div className="shopee-store-details">
@@ -187,8 +214,14 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
                   <span className="stat-label">Products</span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-value">Joined</span>
-                  <span className="stat-label">{sellerData?.createdAt ? new Date(sellerData.createdAt).toLocaleDateString() : 'N/A'}</span>
+                  <span className="stat-value">
+                    {sellerData?.createdAt 
+                      ? (sellerData.createdAt.toDate 
+                          ? sellerData.createdAt.toDate().toLocaleDateString() 
+                          : new Date(sellerData.createdAt).toLocaleDateString())
+                      : 'N/A'}
+                  </span>
+                  <span className="stat-label">Joined</span>
                 </div>
               </div>
               <div className="shopee-store-actions">
@@ -226,7 +259,8 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
                     gap: '6px'
                   }}
                 >
-                  💬 Message
+                  <MessageCircle size={15} />
+                  Message
                 </button>
               </div>
             </div>
@@ -261,15 +295,15 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
             <div className="store-category-filters" style={{ display: 'flex', gap: '10px', marginBottom: '20px', overflowX: 'auto', paddingBottom: '10px' }}>
               {storeCategories.map(cat => (
                 <button
-                  key={cat}
-                  className={`category-filter-btn ${selectedCategory === cat ? 'active' : ''}`}
-                  onClick={() => setSelectedTabCategory(cat)}
+                  key={cat.id}
+                  className={`category-filter-btn ${selectedCategory === cat.id ? 'active' : ''}`}
+                  onClick={() => setSelectedTabCategory(cat.id)}
                   style={{
                     padding: '8px 16px',
                     borderRadius: '50px',
                     border: '1px solid #ddd',
-                    background: selectedCategory === cat ? '#1b4332' : 'white',
-                    color: selectedCategory === cat ? 'white' : '#666',
+                    background: selectedCategory === cat.id ? '#1b4332' : 'white',
+                    color: selectedCategory === cat.id ? 'white' : '#666',
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     fontWeight: '700',
@@ -277,7 +311,7 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
                     fontSize: '0.75rem'
                   }}
                 >
-                  {cat}
+                  {cat.name}
                 </button>
               ))}
             </div>
@@ -287,7 +321,7 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
             <h3>
               {activeTab === 'home' && 'Recommended for You'}
               {activeTab === 'all' && 'All Products'}
-              {activeTab === 'categories' && (selectedCategory === 'all' ? 'All Categories' : `Category: ${selectedCategory}`)}
+              {activeTab === 'categories' && (selectedCategory === 'all' ? 'All Categories' : `Category: ${getCategoryName(selectedCategory)}`)}
             </h3>
           </div>
 
@@ -307,39 +341,63 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
 
           {!loading && filteredDisplayProducts.length > 0 && (
             <div className="shopee-products-grid">
-              {filteredDisplayProducts.map((product) => (
-                <div key={product.id} className="shopee-product-card">
-                  <div className="shopee-product-image">
-                    {product.imageUrl && (
-                      <img src={product.imageUrl} alt={product.name} />
-                    )}
-                    {product.stock <= 0 && <div className="sold-out-overlay">Sold Out</div>}
-                  </div>
-                  <div className="shopee-product-info">
-                    <h4 className="product-name">{product.name}</h4>
-                    <div className="product-price-row">
-                      <span className="currency">₱</span>
-                      <span className="price-value">{product.price.toFixed(2)}</span>
-                    </div>
-                    <div className="product-bottom-row">
-                      <span className="stock-info">{product.stock} in stock</span>
-                      {product.stock > 0 && (
-                        <button
-                          className="shopee-cart-btn"
-                          onClick={(e) => handleAddToCart(e, product)}
-                          title="Add to Cart"
-                        >
-                          🛒
-                        </button>
+              {filteredDisplayProducts.map((product) => {
+                const productRating = calculateProductAverageRating(product)
+                return (
+                  <div key={product.id} className="shopee-product-card" onClick={() => handleProductClick(product)}>
+                    <div className="shopee-product-image">
+                      {product.imageUrl && (
+                        <img src={product.imageUrl} alt={product.name} />
                       )}
+                      {product.stock <= 0 && <div className="sold-out-overlay">Sold Out</div>}
+                    </div>
+                    <div className="shopee-product-info">
+                      <h4 className="shopee-product-name">{product.name}</h4>
+                      <div className="shopee-product-rating">
+                        <span className="shopee-stars">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <span key={star} className={`shopee-star ${star <= productRating ? 'filled' : ''}`}>
+                              ★
+                            </span>
+                          ))}
+                        </span>
+                        <span className="shopee-rating-value">({productRating})</span>
+                      </div>
+                      <div className="product-price-row">
+                        <span className="price-value">{formatPrice(product.price)}</span>
+                      </div>
+                      <div className="product-bottom-row">
+                        <span className="stock-info">{product.stock} in stock</span>
+                        {product.stock > 0 && (
+                          <button
+                            className="shopee-cart-btn"
+                            onClick={(e) => handleAddToCart(e, product)}
+                            title="Add to Cart"
+                          >
+                            <ShoppingCart size={18} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
       </div>
+
+      {/* Product Details Modal */}
+      {selectedProduct && (
+        <ProductDetailsModal
+          isOpen={showProductDetails}
+          product={selectedProduct}
+          onClose={() => {
+            setShowProductDetails(false)
+            setSelectedProduct(null)
+          }}
+        />
+      )}
     </>
   )
 }

@@ -1,0 +1,674 @@
+/* ═══════════════════════════════════════════════════════════
+   Bamboo Home — Admin & Seller Dashboard Theme
+   Shared subpage styles (Forest Green #2E7D32)
+   ═══════════════════════════════════════════════════════════ */
+
+/* Layout shell */
+.admin-dashboard-layout,
+.seller-dashboard-layout {
+  background: var(--bamboo-cream);
+}
+
+.admin-content-area,
+.seller-dashboard-container {
+  padding: 20px 24px 32px;
+}
+
+/* ── Unified subpage containers ── */
+.admin-reports-container,
+.admin-seller-performance,
+.admin-categories-dashboard,
+.admin-products-dashboard,
+.users-management-section,
+.analytics-section {
+  padding: 0;
+  background: transparent;
+  min-height: auto;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* ── Dashboard section headers ── */
+.dashboard-header,
+.admin-seller-performance .dashboard-header,
+.admin-categories-dashboard .dashboard-header,
+.admin-products-dashboard .dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 20px 24px;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-xs);
+}
+
+.dashboard-header .header-title,
+.admin-seller-performance .header-title,
+.admin-categories-dashboard .header-title,
+.admin-products-dashboard .header-title {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  flex: 1;
+}
+
+.dashboard-header .header-title h1,
+.admin-seller-performance .header-title h1,
+.admin-categories-dashboard .header-title h1,
+.admin-products-dashboard .header-title h1,
+.header-title-group h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(20px, 3vw, 24px);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.dashboard-header .header-title p,
+.admin-seller-performance .header-title p,
+.admin-categories-dashboard .header-title p,
+.admin-products-dashboard .header-title p,
+.header-subtitle {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.dashboard-header .header-title svg,
+.admin-seller-performance .header-title svg,
+.admin-categories-dashboard .header-title svg {
+  color: var(--primary-green);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+/* Mini stats in headers */
+.header-stats,
+.admin-seller-performance .header-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mini-stat,
+.admin-seller-performance .mini-stat,
+.admin-products-dashboard .mini-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  background: var(--primary-green-muted);
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(46, 125, 50, 0.12);
+}
+
+.mini-stat .label,
+.admin-seller-performance .mini-stat .label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.mini-stat .value,
+.admin-seller-performance .mini-stat .value,
+.admin-products-dashboard .mini-stat .value {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--primary-green);
+}
+
+.mini-stat .value.danger {
+  color: var(--danger-color);
+}
+
+/* ── Stat cards grid ── */
+.reports-stats-grid,
+.user-stats-grid,
+.metrics-grid,
+.platform-stats-grid {
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.stat-card,
+.platform-stat-card,
+.metric-card,
+.reports-stats-grid .stat-card {
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-xs);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.stat-card:hover,
+.platform-stat-card:hover,
+.metric-card:hover,
+.reports-stats-grid .stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(46, 125, 50, 0.2);
+}
+
+/* Stat icon variants — forest green theme */
+.stat-icon.total,
+.stat-icon-wrapper.total {
+  background: var(--primary-green-muted) !important;
+  color: var(--primary-green) !important;
+}
+
+.stat-icon.pending {
+  background: var(--warning-color) !important;
+  color: white !important;
+}
+
+.stat-icon.resolved {
+  background: var(--primary-green) !important;
+  color: white !important;
+}
+
+.stat-icon.dismissed {
+  background: var(--text-tertiary) !important;
+  color: white !important;
+}
+
+.stat-icon.total { background: var(--primary-green) !important; }
+
+.stat-info h3,
+.stat-value {
+  font-family: var(--font-display);
+  color: var(--text-primary) !important;
+}
+
+.stat-info p,
+.stat-label {
+  color: var(--text-secondary) !important;
+}
+
+.stat-icon.total-users,
+.stat-icon.sellers,
+.stat-icon.buyers { background: var(--primary-green-muted); color: var(--primary-green); }
+
+/* ── Filter bars & tabs ── */
+.reports-filters,
+.filters-section,
+.controls-bar,
+.analytics-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+}
+
+.filter-btn,
+.time-filter-btn,
+.timeframe-btn,
+.analytics-tab-btn {
+  padding: 8px 16px;
+  border: 1.5px solid var(--border-color);
+  background: var(--white);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
+  font-family: var(--font-body);
+}
+
+.filter-btn:hover,
+.time-filter-btn:hover:not(.active),
+.timeframe-btn:hover,
+.analytics-tab-btn:hover {
+  border-color: var(--primary-green);
+  color: var(--primary-green);
+  background: var(--primary-green-muted);
+}
+
+.filter-btn.active,
+.time-filter-btn.active,
+.timeframe-btn.active,
+.analytics-tab-btn.active {
+  background: var(--primary-green) !important;
+  color: var(--white) !important;
+  border-color: var(--primary-green) !important;
+  font-weight: 600;
+}
+
+.timeframe-selector,
+.time-filter-group,
+.analytics-tabs {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--white);
+  box-shadow: none;
+}
+
+.timeframe-btn,
+.time-filter-btn {
+  border: none;
+  border-radius: 0;
+}
+
+/* ── Search bars ── */
+.search-bar,
+.search-box,
+.admin-categories-dashboard .search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-subtle);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border-color);
+  margin-bottom: 16px;
+  box-shadow: none;
+}
+
+.search-bar input,
+.search-box input,
+.admin-categories-dashboard .search-bar input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  background: transparent;
+  font-family: var(--font-body);
+}
+
+.search-bar svg,
+.search-box svg {
+  color: var(--text-tertiary);
+}
+
+/* ── Tables ── */
+.reports-table-wrapper,
+.reports-table-container,
+.product-stats-table,
+.data-table-wrapper {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  box-shadow: var(--shadow-xs);
+}
+
+.reports-table thead,
+.reports-table th,
+.product-stats-table th,
+.data-table th {
+  background: var(--bg-cream) !important;
+  color: var(--text-secondary) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.reports-table td,
+.product-stats-table td,
+.data-table td {
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 14px;
+}
+
+.reports-table tbody tr:hover,
+.product-stats-table tbody tr:hover {
+  background: var(--primary-green-muted);
+}
+
+/* ── Status badges (reports & orders) ── */
+.status-pill,
+.report-status,
+.badge-pending {
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.badge-pending,
+.status-pending {
+  background: #FFF3E0 !important;
+  color: var(--warning-color) !important;
+}
+
+.badge-resolved,
+.status-resolved,
+.status-completed {
+  background: var(--primary-green-muted) !important;
+  color: var(--primary-green-dark) !important;
+}
+
+.badge-dismissed,
+.status-dismissed {
+  background: var(--gray-100) !important;
+  color: var(--text-secondary) !important;
+}
+
+.badge-investigating,
+.status-investigating {
+  background: #E3F2FD !important;
+  color: var(--info-color) !important;
+}
+
+/* ── Action buttons ── */
+.admin-categories-dashboard .btn-primary,
+.btn-admin-primary,
+.reports-table .btn-resolve,
+.reports-table .btn-dismiss,
+.btn-add-category {
+  background: var(--primary-green) !important;
+  color: var(--white) !important;
+  border: none !important;
+  padding: 9px 18px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  font-family: var(--font-body);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-categories-dashboard .btn-primary:hover,
+.btn-admin-primary:hover {
+  background: var(--primary-green-dark) !important;
+}
+
+.btn-danger-outline,
+.reports-table .btn-dismiss {
+  background: var(--white) !important;
+  color: var(--danger-color) !important;
+  border: 1.5px solid rgba(211, 47, 47, 0.4) !important;
+}
+
+.btn-danger-outline:hover {
+  background: #FFEBEE !important;
+}
+
+/* ── Chart containers ── */
+.chart-container,
+.chart-wrapper,
+.sales-analytics-content,
+.product-performance-content,
+.seller-chart-card,
+.performance-chart-card {
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  box-shadow: var(--shadow-xs);
+}
+
+.chart-wrapper h3,
+.chart-container h3,
+.analytics-header h2 {
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.analytics-header h2 {
+  font-size: clamp(18px, 3vw, 22px);
+  margin: 0;
+}
+
+/* ── Seller dashboard specifics ── */
+.seller-dashboard-layout {
+  background: var(--bamboo-cream);
+}
+
+.seller-main-content {
+  margin-left: var(--sidebar-width, 260px);
+}
+
+.dashboard-hero {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+.dashboard-hero .hero-content h1 {
+  font-family: var(--font-display);
+}
+
+/* Seller order cards */
+.seller-order-card,
+.order-card-seller {
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-xs);
+}
+
+.seller-order-card .order-card-header,
+.order-card-seller .order-card-header {
+  background: var(--bg-cream);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.seller-order-card .order-id,
+.order-card-seller .order-id {
+  color: var(--text-primary);
+  font-family: var(--font-display);
+}
+
+/* Order status badges — seller */
+.status-pending {
+  background: #FFF3E0;
+  color: var(--warning-color);
+}
+
+.status-processing {
+  background: #E3F2FD;
+  color: var(--info-color);
+}
+
+.status-shipped {
+  background: var(--primary-green-muted);
+  color: var(--primary-green-dark);
+}
+
+.status-completed,
+.status-delivered {
+  background: var(--primary-green-muted);
+  color: var(--primary-green);
+}
+
+.status-cancelled {
+  background: #FFEBEE;
+  color: var(--danger-color);
+}
+
+/* Seller action buttons */
+.btn-accept-order,
+.btn-process-order,
+.btn-ship-order,
+.seller-action-btn.primary {
+  background: var(--primary-green);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn-accept-order:hover,
+.btn-process-order:hover,
+.btn-ship-order:hover {
+  background: var(--primary-green-dark);
+}
+
+.btn-reject-order,
+.seller-action-btn.danger {
+  background: var(--white);
+  color: var(--danger-color);
+  border: 1.5px solid rgba(211, 47, 47, 0.35);
+}
+
+/* Inventory / product tables in seller */
+.inventory-table,
+.seller-products-table {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.inventory-table th,
+.seller-products-table th {
+  background: var(--bg-cream);
+  color: var(--text-secondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* AI assistant header — keep green gradient */
+.ai-assistant-header {
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--primary-green) 0%, var(--primary-green-dark) 100%);
+}
+
+.suggestion-card {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+}
+
+.suggestion-card:hover {
+  border-color: rgba(46, 125, 50, 0.25);
+}
+
+/* Modals in dashboards */
+.dashboard-modal-overlay {
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+}
+
+.dashboard-modal {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-xl);
+}
+
+/* Share bar / progress */
+.share-bar {
+  background: var(--primary-green) !important;
+}
+
+.share-bar-container {
+  background: var(--gray-100) !important;
+}
+
+.rank-cell {
+  color: var(--primary-green) !important;
+}
+
+/* Empty & loading states */
+.chart-empty,
+.seller-performance-loading,
+.empty-dashboard-state {
+  color: var(--text-secondary);
+  background: var(--bg-cream);
+  border-radius: var(--radius-md);
+  border: 1.5px dashed var(--border-strong);
+}
+
+/* Category cards */
+.category-card,
+.categories-grid .category-item {
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  transition: all 0.2s ease;
+}
+
+.category-card:hover {
+  border-color: rgba(46, 125, 50, 0.3);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Seller performance cards */
+.seller-card,
+.performance-card,
+.seller-metric-card {
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+.seller-card:hover,
+.performance-card:hover {
+  border-color: rgba(46, 125, 50, 0.2);
+  box-shadow: var(--shadow-md);
+}
+
+.seller-rank {
+  background: var(--primary-green);
+  color: white;
+}
+
+.performance-score {
+  color: var(--primary-green);
+}
+
+/* Pagination in dashboards */
+.dashboard-pagination .page-btn.active {
+  background: var(--primary-green);
+  border-color: var(--primary-green);
+}
+
+@media (max-width: 1024px) {
+  .seller-main-content,
+  .admin-main-content {
+    margin-left: 0;
+  }
+
+  .admin-content-area,
+  .seller-dashboard-container {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-header,
+  .admin-seller-performance .dashboard-header {
+    padding: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-stats {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .mini-stat {
+    align-items: flex-start;
+  }
+}

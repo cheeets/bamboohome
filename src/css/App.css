@@ -1,6 +1,11 @@
 .main-content {
   flex: 1;
   width: 100%;
+  background: var(--bg-page);
+}
+
+.main-content.landing {
+  background: var(--white);
 }
 
 html,

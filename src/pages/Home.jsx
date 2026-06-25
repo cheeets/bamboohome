@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { db } from '../services/firebase'
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 import { LoginModal } from '../components/LoginModal'
 import { SignupModal } from '../components/SignupModal'
-import { ProductCard } from '../components/ProductCard'
 import '../css/Home.css'
 
 export function Home() {
@@ -13,10 +10,7 @@ export function Home() {
   const { user, userRole } = useAuth()
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [showSignupModal, setShowSignupModal] = useState(false)
-  const [featuredProducts, setFeaturedProducts] = useState([])
-  const [loading, setLoading] = useState(true)
 
-  // Redirect sellers and admins to their dashboards
   useEffect(() => {
     if (user && userRole === 'seller') {
       navigate('/seller/dashboard', { replace: true })
@@ -24,32 +18,6 @@ export function Home() {
       navigate('/dashboard', { replace: true })
     }
   }, [user, userRole, navigate])
-
-  // Fetch featured products
-  useEffect(() => {
-    const fetchFeaturedProducts = async () => {
-      try {
-        setLoading(true)
-        const q = query(
-          collection(db, 'products'),
-          orderBy('createdAt', 'desc'),
-          limit(4)
-        )
-        const querySnapshot = await getDocs(q)
-        const products = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }))
-        setFeaturedProducts(products)
-      } catch (err) {
-        console.error('Error fetching featured products:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchFeaturedProducts()
-  }, [])
 
   const handleGetStarted = () => {
     if (user) {
@@ -61,133 +29,144 @@ export function Home() {
 
   return (
     <div className="landing-page">
-      {/* Hero Section */}
       <section className="landing-hero">
-        <div className="landing-hero-content">
+        <div className="hero-content-wrapper">
           <div className="hero-text">
-            <h1>GreenNest</h1>
-            <p className="hero-subtitle">
-              Rooted in Strength, Designed for Growth
+            <h1 className="hero-title">
+              Rooted in Strength,<br />
+              Designed for <span className="hero-highlight">Growth</span>
+            </h1>
+            <p className="hero-description">
+              Discover eco-friendly bamboo furniture crafted by local artisans.
+              Transform your space with sustainable elegance.
             </p>
-            <button className="hero-btn" onClick={handleGetStarted}>
-              {user ? 'Shop Now' : 'Get Started'}
-            </button>
+            <div className="hero-cta-group">
+              <button className="hero-btn primary" onClick={handleGetStarted}>
+                Shop Collection
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                  <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div className="hero-visual">
+            <img
+              src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=900&auto=format&fit=crop&q=80"
+              alt="Handcrafted bamboo furniture in a modern living space"
+              className="hero-visual-img"
+            />
           </div>
         </div>
       </section>
 
-      {/* Featured Products Grid */}
-      <section className="featured-section">
-        <div className="section-header">
-          <h2>Featured Collection</h2>
-          <p>Handpicked sustainable furniture for your home</p>
-        </div>
-        
-        {loading ? (
-          <div className="loading-featured">Loading featured products...</div>
-        ) : (
-          <div className="featured-grid">
-            {featuredProducts.map(product => (
-              <ProductCard 
-                key={product.id} 
-                product={product} 
-                onViewDetails={() => navigate(`/shop`)}
-              />
-            ))}
-          </div>
-        )}
-        
-        <div className="view-all-container">
-          <button className="view-all-btn" onClick={() => navigate('/shop')}>
-            View All Collection
-          </button>
-        </div>
-      </section>
-
-      {/* Why Choose GreenNest */}
       <section className="cta-section">
-        <h2>Why Choose GreenNest?</h2>
+        <div className="section-header">
+          <div className="section-badge">Why Choose Us</div>
+          <h2>Built for Sustainability</h2>
+          <p>Quality craftsmanship meets environmental responsibility</p>
+        </div>
         <div className="cta-grid">
           <div className="cta-card">
-            <div className="cta-icon">🌱</div>
+            <div className="cta-icon-wrapper">
+              <div className="cta-icon">🌱</div>
+            </div>
             <h3>Eco-Friendly</h3>
-            <p>Renewable bamboo materials that reduce environmental impact.</p>
+            <p>Renewable bamboo materials that reduce environmental impact and promote sustainable living.</p>
           </div>
           <div className="cta-card">
-            <div className="cta-icon">🛠️</div>
+            <div className="cta-icon-wrapper">
+              <div className="cta-icon">🛠️</div>
+            </div>
             <h3>Local Craftsmanship</h3>
-            <p>Handcrafted by skilled Filipino artisans.</p>
+            <p>Handcrafted by skilled Filipino artisans with decades of traditional expertise.</p>
           </div>
           <div className="cta-card">
-            <div className="cta-icon">💪</div>
+            <div className="cta-icon-wrapper">
+              <div className="cta-icon">💪</div>
+            </div>
             <h3>Durable Quality</h3>
-            <p>Stronger than many hardwoods and built to last.</p>
+            <p>Stronger than many hardwoods and built to last for generations to come.</p>
           </div>
         </div>
       </section>
 
-      {/* Process */}
       <section className="landing-features">
-        <h2>How It Works</h2>
+        <div className="section-header">
+          <div className="section-badge">Process</div>
+          <h2>How It Works</h2>
+          <p>From sustainable sourcing to your doorstep</p>
+        </div>
         <div className="features-container">
           <div className="feature-card">
             <div className="feature-image">
               <img
-                src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=500"
+                src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&auto=format&fit=crop&q=80"
                 alt="Sustainable sourcing"
               />
               <span className="feature-badge">1</span>
             </div>
-            <h3>Sustainable Sourcing</h3>
-            <p>Responsibly harvested bamboo from trusted local farms.</p>
+            <div className="feature-content">
+              <h3>Sustainable Sourcing</h3>
+              <p>Responsibly harvested bamboo from trusted local farms committed to environmental stewardship.</p>
+            </div>
           </div>
 
           <div className="feature-card">
             <div className="feature-image">
               <img
-                src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=500"
+                src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&auto=format&fit=crop&q=80"
                 alt="Craftsmanship"
               />
               <span className="feature-badge">2</span>
             </div>
-            <h3>Expert Crafting</h3>
-            <p>Traditional and modern techniques combined.</p>
+            <div className="feature-content">
+              <h3>Expert Crafting</h3>
+              <p>Traditional and modern techniques combined to create furniture that's both beautiful and functional.</p>
+            </div>
           </div>
 
           <div className="feature-card">
             <div className="feature-image">
               <img
-                src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=500"
+                src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&auto=format&fit=crop&q=80"
                 alt="Delivery"
               />
               <span className="feature-badge">3</span>
             </div>
-            <h3>Delivered to You</h3>
-            <p>Eco-friendly furniture straight to your home.</p>
+            <div className="feature-content">
+              <h3>Delivered to You</h3>
+              <p>Eco-friendly furniture delivered straight to your home with care and attention to detail.</p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Final CTA */}
-      {/* <section className="final-cta">
-        <h2>Choose Sustainable Living</h2>
-        <p>Support local artisans while protecting the planet.</p>
-        <button className="cta-btn" onClick={handleGetStarted}>
-          {user ? 'Explore Collection' : 'Get Started Today'}
-        </button>
-      </section> */}
+      <section className="final-cta">
+        <div className="final-cta-content">
+          <h2>Ready to Transform Your Space?</h2>
+          <p>Join thousands of satisfied customers who chose sustainable living</p>
+          <button className="final-cta-btn" onClick={handleGetStarted}>
+            {user ? 'Start Shopping' : 'Get Started Today'}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </button>
+        </div>
+      </section>
 
-      {/* Login Modal */}
-      <LoginModal 
-        isOpen={showLoginModal} 
+      <LoginModal
+        isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
         onSwitchToSignup={() => {
           setShowLoginModal(false)
           setShowSignupModal(true)
         }}
       />
-      <SignupModal 
-        isOpen={showSignupModal} 
+      <SignupModal
+        isOpen={showSignupModal}
         onClose={() => setShowSignupModal(false)}
         onSwitchToLogin={() => {
           setShowSignupModal(false)

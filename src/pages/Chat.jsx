@@ -319,33 +319,32 @@ export function Chat() {
     }
   }
 
-  if (!user) return <div>Loading user...</div>
+  if (!user) return <div className="chat-loading">Loading user...</div>
   
   if (!userRole) {
-    return <div style={{ padding: '20px', textAlign: 'center' }}>Loading user role...</div>
+    return <div className="chat-loading">Loading user role...</div>
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', backgroundColor: '#f5f5f5' }}>
-      {/* Users list - Stores for buyers, Customers for sellers */}
-      <div style={{ width: '30%', borderRight: '1px solid #ddd', backgroundColor: '#fff', overflowY: 'auto' }}>
-        <div style={{ padding: '15px', borderBottom: '1px solid #ddd', backgroundColor: '#f9f9f9' }}>
-          <h3 style={{ margin: 0 }}>
+    <div className="chat-shell">
+      <aside className="chat-sidebar">
+        <div className="chat-sidebar-header">
+          <h3>
             {userRole === 'seller' ? 'Customers' : 'Stores'}
           </h3>
-          <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#666' }}>
+          <p>
             {userRole === 'seller' ? 'Your customer messages' : 'Message your favorite stores'}
           </p>
         </div>
 
         {loadingConversations && Object.keys(otherUsersMap).length === 0 ? (
-          <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
-            ⏳ Loading {userRole === 'seller' ? 'customers' : 'stores'}...
+          <div className="chat-empty">
+            Loading {userRole === 'seller' ? 'customers' : 'stores'}...
           </div>
         ) : Object.keys(otherUsersMap).length === 0 ? (
-          <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+          <div className="chat-empty">
             <p>No {userRole === 'seller' ? 'customers' : 'stores'} available</p>
-            <p style={{ fontSize: '11px', marginTop: '10px' }}>Make sure there are {userRole === 'seller' ? 'buyers' : 'sellers'} in the system</p>
+            <p className="chat-empty-note">Make sure there are {userRole === 'seller' ? 'buyers' : 'sellers'} in the system</p>
           </div>
         ) : (
           Object.values(otherUsersMap).map((otherUser) => {
@@ -357,58 +356,35 @@ export function Chat() {
                   console.log('Selected user:', otherUser.uid)
                   setSelectedOtherId(otherUser.uid)
                 }}
-                style={{
-                  padding: '12px 15px',
-                  cursor: 'pointer',
-                  backgroundColor: selectedOtherId === otherUser.uid ? '#e3f2fd' : '#fff',
-                  borderBottom: '1px solid #eee',
-                  transition: 'background-color 0.2s',
-                  display: 'flex',
-                  gap: '12px',
-                  alignItems: 'center'
-                }}
+                className={`chat-user-item ${selectedOtherId === otherUser.uid ? 'active' : ''}`}
               >
-                {/* Store Photo Avatar */}
-                <div style={{
-                  width: '50px',
-                  height: '50px',
-                  borderRadius: '50%',
-                  backgroundColor: '#f0f0f0',
-                  overflow: 'hidden',
-                  flexShrink: 0,
-                  border: selectedOtherId === otherUser.uid ? '2px solid #667eea' : '2px solid transparent',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
+                <div className="chat-user-avatar">
                   {otherUser.storePhotoUrl ? (
                     <img 
                       src={otherUser.storePhotoUrl} 
                       alt={otherUser.storeName} 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      className="chat-user-avatar-image"
                     />
                   ) : (
-                    <span style={{ fontSize: '24px' }}>
-                      {userRole === 'seller' ? '👤' : '🏪'}
-                    </span>
+                    <span>{userRole === 'seller' ? 'U' : 'S'}</span>
                   )}
                 </div>
 
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: '0 0 5px 0', fontWeight: 600, color: '#333' }}>
+                <div className="chat-user-meta">
+                  <p className="chat-user-name">
                     {userRole === 'seller' ? otherUser.name : otherUser.storeName || 'Store'}
                   </p>
                   {userRole !== 'seller' && (
-                    <p style={{ margin: '0 0 3px 0', fontSize: '12px', color: '#666' }}>
+                    <p className="chat-user-subname">
                       {otherUser.name || 'Store Owner'}
                     </p>
                   )}
                   {conversation ? (
-                    <p style={{ margin: 0, fontSize: '12px', color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <p className="chat-user-preview">
                       {conversation.lastMessage}
                     </p>
                   ) : (
-                    <p style={{ margin: 0, fontSize: '12px', color: '#ccc', fontStyle: 'italic' }}>
+                    <p className="chat-user-preview empty">
                       No messages yet
                     </p>
                   )}
@@ -417,58 +393,46 @@ export function Chat() {
             )
           })
         )}
-      </div>
+      </aside>
 
-      {/* Chat window */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#fff' }}>
+      <section className="chat-main">
         {selectedOtherId ? (
           <>
-            <div style={{ padding: '15px', borderBottom: '1px solid #ddd', backgroundColor: '#f9f9f9' }}>
-              <h3 style={{ margin: 0, color: '#333' }}>
+            <div className="chat-main-header">
+              <h3>
                 {userRole === 'seller' 
                   ? otherUsersMap[selectedOtherId]?.name || 'Customer'
                   : otherUsersMap[selectedOtherId]?.storeName || 'Store'
                 }
               </h3>
               {userRole !== 'seller' && (
-                <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#666' }}>
+                <p>
                   {otherUsersMap[selectedOtherId]?.name || 'Store Owner'}
                 </p>
               )}
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: '15px' }}>
+            <div className="chat-messages">
               {loadingMessages ? (
-                <div style={{ textAlign: 'center', color: '#999' }}>Loading messages...</div>
+                <div className="chat-empty">Loading messages...</div>
               ) : messages.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#999', paddingTop: '20px' }}>
+                <div className="chat-empty">
                   <p>No messages yet</p>
-                  <p style={{ fontSize: '12px', marginTop: '10px' }}>Start the conversation below!</p>
+                  <p className="chat-empty-note">Start the conversation below.</p>
                 </div>
               ) : (
                 messages.map((msg) => (
                   <div
                     key={msg.id}
-                    style={{
-                      marginBottom: '10px',
-                      textAlign: msg.senderId === user.uid ? 'right' : 'left'
-                    }}
+                    className={`chat-message-row ${msg.senderId === user.uid ? 'sent' : 'received'}`}
                   >
                     <div
-                      style={{
-                        display: 'inline-block',
-                        padding: '10px 12px',
-                        borderRadius: '8px',
-                        backgroundColor: msg.senderId === user.uid ? '#007bff' : '#e9ecef',
-                        color: msg.senderId === user.uid ? '#fff' : '#333',
-                        maxWidth: '70%',
-                        wordWrap: 'break-word'
-                      }}
+                      className={`chat-bubble ${msg.senderId === user.uid ? 'sent' : 'received'}`}
                     >
-                      <p style={{ margin: 0, fontSize: '12px', fontWeight: 500, marginBottom: '4px', opacity: 0.8 }}>
+                      <p className="chat-bubble-sender">
                         {msg.senderName}
                       </p>
-                      <p style={{ margin: 0 }}>{msg.message}</p>
+                      <p className="chat-bubble-text">{msg.message}</p>
                     </div>
                   </div>
                 ))
@@ -476,46 +440,37 @@ export function Chat() {
               <div ref={messagesEndRef} />
             </div>
 
-            <div style={{ display: 'flex', padding: '15px', borderTop: '1px solid #ddd', gap: '10px' }}>
+            <div className="chat-input-bar">
               <input
                 type="text"
                 value={messageInput}
                 onChange={(e) => setMessageInput(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                 placeholder="Type your message..."
-                style={{ flex: 1, padding: '10px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}
+                className="chat-input"
               />
               <button
                 onClick={() => {
                   console.log('Send button clicked!')
                   handleSendMessage()
                 }}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#007bff',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 500
-                }}
+                className="chat-send-btn"
               >
                 Send
               </button>
             </div>
           </>
         ) : (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '18px', marginBottom: '10px' }}>
+          <div className="chat-empty chat-empty-main">
+            <div>
+              <p className="chat-empty-title">
                 Select a {userRole === 'seller' ? 'customer' : 'store'} to chat
               </p>
-              <p style={{ fontSize: '14px' }}>Choose from your conversations on the left</p>
+              <p className="chat-empty-note">Choose from your conversations on the left</p>
             </div>
           </div>
         )}
-      </div>
+      </section>
     </div>
   )
 }

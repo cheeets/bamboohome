@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { getFriendlyErrorMessage } from '../utils/errorMessages'
 import { useNavigate } from 'react-router-dom'
+import { Toast } from './Toast'
 import '../css/LoginModal.css'
 
 export function LoginModal({ isOpen, onClose, onSwitchToSignup }) {
@@ -9,6 +10,7 @@ export function LoginModal({ isOpen, onClose, onSwitchToSignup }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showSuccessToast, setShowSuccessToast] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
 
@@ -29,17 +31,27 @@ export function LoginModal({ isOpen, onClose, onSwitchToSignup }) {
 
     try {
       const result = await login(email, password)
-      setEmail('')
-      setPassword('')
-      onClose()
       
-      // Navigate based on user role
-      if (result.role === 'seller') {
-        navigate('/seller/dashboard')
-      } else if (result.role === 'admin') {
-        navigate('/dashboard')
+      if (result.role === 'user') {
+        setShowSuccessToast(true)
+        // Give time for the toast to be seen before redirecting
+        setTimeout(() => {
+          setEmail('')
+          setPassword('')
+          onClose()
+          navigate('/shop')
+        }, 1500)
       } else {
-        navigate('/shop')
+        setEmail('')
+        setPassword('')
+        onClose()
+        
+        // Navigate based on user role
+        if (result.role === 'seller') {
+          navigate('/seller/dashboard')
+        } else if (result.role === 'admin') {
+          navigate('/dashboard')
+        }
       }
     } catch (err) {
       setError(getFriendlyErrorMessage(err))
@@ -57,11 +69,21 @@ export function LoginModal({ isOpen, onClose, onSwitchToSignup }) {
   if (!isOpen) return null
 
   return (
-    <>
-      <div className="modal-overlay2" onClick={handleClose}></div>
-      <div className="login-modal2">
+    <div className="modal-overlay2" onClick={handleClose}>
+      <div className="login-modal2" onClick={(e) => e.stopPropagation()}>
         <div className="modal-content2">
           <button className="modal-close" onClick={handleClose}>&times;</button>
+          
+          <h2>Login</h2>
+          
+          {showSuccessToast && (
+            <Toast 
+              message="Welcome back! Successfully logged in as Buyer." 
+              type="success" 
+              onClose={() => setShowSuccessToast(false)} 
+            />
+          )}
+
           {error && <div className="error-message">{error}</div>}
           <form onSubmit={handleSubmit}>
             <div className="form-group">
@@ -73,6 +95,7 @@ export function LoginModal({ isOpen, onClose, onSwitchToSignup }) {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="Enter your email"
+                disabled={showSuccessToast}
               />
             </div>
             <div className="form-group">
@@ -84,10 +107,11 @@ export function LoginModal({ isOpen, onClose, onSwitchToSignup }) {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="Enter your password"
+                disabled={showSuccessToast}
               />
             </div>
-            <button type="submit" disabled={loading} className="btn btn-primary btn-full">
-              {loading ? 'Logging in...' : 'Login'}
+            <button type="submit" disabled={loading || showSuccessToast} className="btn btn-primary btn-full">
+              {loading ? (showSuccessToast ? 'Redirecting...' : 'Logging in...') : 'Login'}
             </button>
           </form>
           <p className="modal-footer">
@@ -95,6 +119,6 @@ export function LoginModal({ isOpen, onClose, onSwitchToSignup }) {
           </p>
         </div>
       </div>
-    </>
+    </div>
   )
 }

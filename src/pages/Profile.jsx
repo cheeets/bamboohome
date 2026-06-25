@@ -15,7 +15,7 @@ export function Profile() {
 
   useEffect(() => {
     if (!user) {
-      navigate('/login')
+      navigate('/')
       return
     }
     fetchUserData()
@@ -152,7 +152,7 @@ export function Profile() {
                         <span className="stat-icon">📦</span>
                         <span className="stat-label">Orders</span>
                       </div>
-                      <div className="stat-item" onClick={() => navigate('/messages')}>
+                      <div className="stat-item" onClick={() => navigate('/chat')}>
                         <span className="stat-icon">💬</span>
                         <span className="stat-label">Chats</span>
                       </div>

@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../services/firebase'
-import { collection, getDocs, query, where, onSnapshot, doc, getDoc, updateDoc } from 'firebase/firestore'
+import { collection, getDocs, query, where, onSnapshot, doc, getDoc, updateDoc, orderBy } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 import { ProductCard } from '../components/ProductCard'
 import { ProductModal } from '../components/ProductModal'
+import { Chat } from './Chat'
 import { Bar, Pie } from 'react-chartjs-2'
 import SellerSidebar from '../components/SellerSidebar'
 import {
@@ -17,9 +18,15 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js'
+import { notifyOrderStatusChange } from '../services/notificationService'
+import { calculateAverageRating, getStockStatus, formatPrice } from '../utils/rating'
+import { BarChart3, MessageCircle, Package, Plus, ShoppingBag, Truck } from 'lucide-react'
+import '../css/BuyerLayout.css'
 import '../css/ShopPage.css'
 import '../css/SellerDashboard.css'
 import '../css/AdminDashboardLayout.css'
+import '../css/DashboardTheme.css'
+import '../css/Messaging.css'
 
 ChartJS.register(
   CategoryScale,
@@ -42,17 +49,23 @@ export function SellerDashboard() {
   const [analyticsTimeframe, setAnalyticsTimeframe] = useState('month')
 
   const [showProductModal, setShowProductModal] = useState(false)
-  const [modalCategory, setModalCategory] = useState('chair')
+  const [modalCategory, setModalCategory] = useState('')
   const [editingProduct, setEditingProduct] = useState(null)
   const [ordersWithDetails, setOrdersWithDetails] = useState([])
   const [loadingOrderDetails, setLoadingOrderDetails] = useState(false)
 
   const [activeView, setActiveView] = useState('analytics')
   const [activeSubView, setActiveSubView] = useState('analytics-overview')
+  const [categories, setCategories] = useState([])
+  const [deliveryMessage, setDeliveryMessage] = useState('')
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false)
+  const [selectedOrderForDelivery, setSelectedOrderForDelivery] = useState(null)
 
   // Real-time products listener for inventory monitoring
   useEffect(() => {
     if (!user) return
+
+    fetchCategories()
 
     const q = query(
       collection(db, 'products'),
@@ -76,6 +89,20 @@ export function SellerDashboard() {
 
     return () => unsubscribe()
   }, [user])
+
+  const fetchCategories = async () => {
+    try {
+      const q = query(collection(db, 'categories'), orderBy('name', 'asc'))
+      const querySnapshot = await getDocs(q)
+      const list = []
+      querySnapshot.forEach((doc) => {
+        list.push({ id: doc.id, ...doc.data() })
+      })
+      setCategories(list)
+    } catch (err) {
+      console.error('Error fetching categories:', err)
+    }
+  }
 
   const fetchProducts = async () => {
     try {
@@ -140,12 +167,98 @@ export function SellerDashboard() {
   }
 
   const updateOrderStatus = async (orderId, newStatus) => {
+    console.log('🔄 updateOrderStatus called:', { orderId, newStatus })
+    
+    if (newStatus === 'Delivered') {
+      // Show modal to add delivery message
+      setSelectedOrderForDelivery(orderId)
+      setDeliveryMessage('We are going to deliver your items today!')
+      setShowDeliveryModal(true)
+      return
+    }
+
     try {
       const orderRef = doc(db, 'orders', orderId)
+      
+      // Get order details to find the buyer's userId
+      console.log('📖 Fetching order document...')
+      const orderDoc = await getDoc(orderRef)
+      if (!orderDoc.exists()) {
+        throw new Error('Order not found')
+      }
+      
+      const orderData = orderDoc.data()
+      const buyerUserId = orderData.userId
+      console.log('👤 Buyer userId:', buyerUserId)
+      
+      // Update order status
+      console.log('💾 Updating order status in Firestore...')
       await updateDoc(orderRef, { status: newStatus })
-      console.log(`✓ Order ${orderId} updated to ${newStatus}`)
+      console.log('✅ Order status updated in Firestore')
+      
+      // Trigger notification for buyer
+      if (buyerUserId) {
+        console.log('🔔 Calling notifyOrderStatusChange...')
+        await notifyOrderStatusChange(buyerUserId, orderId, newStatus)
+        console.log('✅ Notification triggered')
+      } else {
+        console.warn('⚠️ No buyerUserId found, skipping notification')
+      }
+      
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === orderId ? { ...order, status: newStatus } : order
+        )
+      )
+      
+      console.log(`✅ Order ${orderId} updated to ${newStatus}`)
+    } catch (err) {
+      console.error('❌ Error updating order status:', err)
+      alert(`Failed to update order status: ${err.message}`)
+    }
+  }
+
+  const handleConfirmDelivery = async () => {
+    if (!selectedOrderForDelivery) return
+
+    try {
+      const orderRef = doc(db, 'orders', selectedOrderForDelivery)
+      
+      // Get order details to find the buyer's userId
+      const orderDoc = await getDoc(orderRef)
+      if (!orderDoc.exists()) {
+        throw new Error('Order not found')
+      }
+      
+      const orderData = orderDoc.data()
+      const buyerUserId = orderData.userId
+      const finalMessage = deliveryMessage.trim() || 'Your order is on the way!'
+      
+      // Update order status with delivery message
+      await updateDoc(orderRef, { 
+        status: 'Delivered',
+        deliveryMessage: finalMessage
+      })
+      
+      // Trigger notification for buyer with custom message
+      if (buyerUserId) {
+        await notifyOrderStatusChange(buyerUserId, selectedOrderForDelivery, 'Delivered', finalMessage)
+      }
+      
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === selectedOrderForDelivery ? { ...order, status: 'Delivered' } : order
+        )
+      )
+      
+      setShowDeliveryModal(false)
+      setSelectedOrderForDelivery(null)
+      setDeliveryMessage('')
+      
+      console.log(`Order ${selectedOrderForDelivery} marked as delivered`)
     } catch (err) {
       console.error('Error updating order status:', err)
+      alert(`Failed to update order status: ${err.message}`)
     }
   }
 
@@ -157,6 +270,29 @@ export function SellerDashboard() {
     // Order details removed
   }
 
+  const normalizeOrderStatus = (status = '') => status.toString().trim().toLowerCase()
+
+  const getOrderItems = (order = {}) => order?.products || order?.items || []
+
+  const getOrderTotal = (order = {}) => {
+    const items = getOrderItems(order)
+    if (items.length > 0) {
+      return items.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 1)), 0)
+    }
+    return Number(order.totalAmount || 0)
+  }
+
+  const getBuyerDisplayName = (order) => {
+    return order.buyerName || order.buyerEmail || order.userEmail || 'Unknown Buyer'
+  }
+
+  const formatOrderDate = (createdAt) => {
+    if (!createdAt) return 'N/A'
+    if (createdAt?.toDate) return createdAt.toDate().toLocaleDateString()
+    const parsed = new Date(createdAt)
+    return Number.isNaN(parsed.getTime()) ? 'N/A' : parsed.toLocaleDateString()
+  }
+
   const getSalesStats = () => {
     const productMap = {}
     const salesByProduct = {}
@@ -164,9 +300,10 @@ export function SellerDashboard() {
     let totalOrders = orders.length
 
     orders.forEach((order) => {
-      if (order.status === 'Delivered' || order.status === 'Completed') {
-        totalRevenue += order.totalAmount || 0
-        ;(order.products || order.items || []).forEach((item) => {
+      const normalizedStatus = normalizeOrderStatus(order.status)
+      if (normalizedStatus === 'delivered' || normalizedStatus === 'completed') {
+        totalRevenue += getOrderTotal(order)
+        getOrderItems(order).forEach((item) => {
           const productName = item.name || 'Unknown Product'
           if (!productMap[productName]) {
             productMap[productName] = { quantity: 0, revenue: 0 }
@@ -187,7 +324,8 @@ export function SellerDashboard() {
     const grouped = {}
 
     orders.forEach((order) => {
-      if (order.status !== 'Delivered' && order.status !== 'Completed') return
+      const normalizedStatus = normalizeOrderStatus(order.status)
+      if (normalizedStatus !== 'delivered' && normalizedStatus !== 'completed') return
       
       const orderDate = order.createdAt?.toDate?.() || new Date(order.createdAt)
       let key
@@ -214,12 +352,12 @@ export function SellerDashboard() {
   const analyticsData = getOrdersByTimeframe()
   const { productMap, totalRevenue, totalOrders, salesByProduct } = getSalesStats()
 
-  // AI Inventory Logic
+  // Inventory assistant logic
   const inventoryStats = useMemo(() => {
     const lowStock = products.filter(p => (p.stock || 0) <= (p.lowStockThreshold || 5) && (p.stock || 0) > 0)
     const outOfStock = products.filter(p => (p.stock || 0) <= 0)
     
-    // AI Suggestions based on sales trends and current stock
+    // Stock suggestions based on sales trends and current stock
     const suggestions = products.map(product => {
       const salesCount = salesByProduct[product.name] || 0
       const currentStock = product.stock || 0
@@ -244,6 +382,16 @@ export function SellerDashboard() {
 
     return { lowStock, outOfStock, suggestions }
   }, [products, salesByProduct])
+
+  const inventoryPreviewProducts = useMemo(() => {
+    return [...products]
+      .sort((a, b) => {
+        const aStock = Number(a.stock || 0)
+        const bStock = Number(b.stock || 0)
+        return aStock - bStock
+      })
+      .slice(0, 8)
+  }, [products])
 
   const barChartData = {
     labels: analyticsData.map(([period]) => period),
@@ -302,7 +450,7 @@ export function SellerDashboard() {
             const label = context.label || ''
             const value = context.parsed
             const percentage = ((value / totalRevenue) * 100).toFixed(1)
-            return `${label}: ₱${value.toFixed(2)} (${percentage}%)`
+            return `${label}: ${formatPrice(value)} (${percentage}%)`
           },
         },
       },
@@ -354,26 +502,131 @@ export function SellerDashboard() {
 
   // Filter pending orders
   const pendingOrders = ordersWithDetails.filter(order => 
-    order.status === 'Pending'
+    normalizeOrderStatus(order.status) === 'pending'
   )
 
   // Filter processing and completed orders
   const processingOrders = ordersWithDetails.filter(order => 
-    order.status === 'Processing' || order.status === 'Shipped'
+    normalizeOrderStatus(order.status) === 'processing' || normalizeOrderStatus(order.status) === 'shipped'
   )
 
   const completedOrders = ordersWithDetails.filter(order => 
-    order.status === 'Completed' || order.status === 'Delivered'
+    normalizeOrderStatus(order.status) === 'completed' || normalizeOrderStatus(order.status) === 'delivered'
+  )
+
+  const renderOrderSection = ({
+    title,
+    description,
+    list,
+    emptyMessage,
+    actionLabel,
+    actionStatus,
+    actionClassName,
+  }) => (
+    <section className="orders-section-card">
+      <div className="section-header">
+        <div>
+          <h2>{title}</h2>
+          <p className="section-caption">{description}</p>
+        </div>
+      </div>
+
+      {loadingOrderDetails && <div className="loading">Loading order details...</div>}
+
+      {!loadingOrderDetails && list.length === 0 && (
+        <div className="empty-state">
+          <p>{emptyMessage}</p>
+        </div>
+      )}
+
+      {!loadingOrderDetails && list.length > 0 && (
+        <div className="seller-order-grid">
+          {list.map((order) => {
+            const orderItems = getOrderItems(order)
+            return (
+              <article key={order.id} className="seller-order-card">
+                <div className="seller-order-card-header">
+                  <div>
+                    <span className="seller-order-label">Order</span>
+                    <h3>#{order.id.slice(0, 8).toUpperCase()}</h3>
+                  </div>
+                  <span className={`status-badge status-${normalizeOrderStatus(order.status)}`}>
+                    {order.status}
+                  </span>
+                </div>
+
+                <div className="seller-order-meta">
+                  <div>
+                    <span className="seller-order-label">Buyer</span>
+                    <strong>{getBuyerDisplayName(order)}</strong>
+                    <p>{order.buyerEmail || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="seller-order-label">Placed</span>
+                    <strong>{formatOrderDate(order.createdAt)}</strong>
+                    <p>{order.address?.phoneNumber || 'No phone provided'}</p>
+                  </div>
+                </div>
+
+                <div className="seller-order-address">
+                  <span className="seller-order-label">Delivery Address</span>
+                  <p>{order.address?.addressLine || 'No address provided'}</p>
+                </div>
+
+                <div className="seller-order-items">
+                  {orderItems.map((item, index) => (
+                    <div key={`${order.id}-${index}`} className="seller-order-item">
+                      <div className="seller-order-item-image">
+                        {item.image || item.imageUrl ? (
+                          <img src={item.image || item.imageUrl} alt={item.name || 'Ordered product'} />
+                        ) : (
+                          <div className="seller-order-item-fallback">
+                            <ShoppingBag size={16} />
+                          </div>
+                        )}
+                      </div>
+                      <div className="seller-order-item-info">
+                        <strong>{item.name || 'Unknown product'}</strong>
+                        <span>Qty: {item.quantity || 1}</span>
+                      </div>
+                      <span className="seller-order-item-price">
+                        {formatPrice((item.price || 0) * (item.quantity || 1))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="seller-order-footer">
+                  <div className="seller-order-total">
+                    <span className="seller-order-label">Seller Total</span>
+                    <strong>{formatPrice(getOrderTotal(order))}</strong>
+                  </div>
+                  {actionLabel && actionStatus && (
+                    <button
+                      className={actionClassName}
+                      onClick={() => updateOrderStatus(order.id, actionStatus)}
+                    >
+                      {actionLabel}
+                    </button>
+                  )}
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      )}
+    </section>
   )
 
   return (
-    <div className="admin-dashboard-layout">
-      <SellerSidebar 
-        activeView={activeView} 
-        setActiveView={setActiveView}
-      />
+    <div className="admin-dashboard-layout seller-dashboard-layout">
+      <div className="dashboard-shell-inner">
+        <SellerSidebar 
+          activeView={activeView} 
+          setActiveView={setActiveView}
+        />
       
-      <main className="admin-main-content">
+        <main className="admin-main-content dashboard-main-panel">
         {/* Header */}
         <div className="admin-page-header">
           <div className="header-content">
@@ -386,7 +639,7 @@ export function SellerDashboard() {
           </div>
           <div className="header-stats">
             <div className="quick-stat">
-              <span className="stat-value">₱{totalRevenue.toFixed(2)}</span>
+              <span className="stat-value">{formatPrice(totalRevenue)}</span>
               <span className="stat-label">Revenue</span>
             </div>
             <div className="quick-stat">
@@ -433,28 +686,28 @@ export function SellerDashboard() {
                 {/* Key Metrics */}
                 <div className="metrics-grid">
                   <div className="metric-card">
-                    <div className="metric-icon">💰</div>
+                    <div className="metric-icon">₱</div>
                     <div className="metric-content">
                       <h3>Total Revenue</h3>
-                      <p className="metric-value">₱{totalRevenue.toFixed(2)}</p>
+                      <p className="metric-value">{formatPrice(totalRevenue)}</p>
                     </div>
                   </div>
                   <div className="metric-card">
-                    <div className="metric-icon">📦</div>
+                    <div className="metric-icon"><Package size={22} /></div>
                     <div className="metric-content">
                       <h3>Completed Orders</h3>
                       <p className="metric-value">{totalOrders}</p>
                     </div>
                   </div>
                   <div className="metric-card">
-                    <div className="metric-icon">🛍️</div>
+                    <div className="metric-icon"><ShoppingBag size={22} /></div>
                     <div className="metric-content">
                       <h3>Active Products</h3>
                       <p className="metric-value">{products.length}</p>
                     </div>
                   </div>
                   <div className="metric-card">
-                    <div className="metric-icon">⭐</div>
+                    <div className="metric-icon"><BarChart3 size={22} /></div>
                     <div className="metric-content">
                       <h3>Top Product</h3>
                       <p className="metric-value">{topProducts.length > 0 ? topProducts[0][0] : 'N/A'}</p>
@@ -494,7 +747,7 @@ export function SellerDashboard() {
                           <tr key={index}>
                             <td>{name}</td>
                             <td>{data.quantity}</td>
-                            <td>₱{data.revenue.toFixed(2)}</td>
+                            <td>{formatPrice(data.revenue)}</td>
                             <td>{((data.revenue / totalRevenue) * 100).toFixed(1)}%</td>
                           </tr>
                         ))}
@@ -508,20 +761,22 @@ export function SellerDashboard() {
 
           {activeView === 'inventory' && (
             <div className="seller-dashboard-container" style={{ padding: 0, background: 'none' }}>
-              <section className="inventory-ai-section">
-                <div className="ai-assistant-header">
-                  <div className="ai-title">
-                    <span className="ai-icon">🤖</span>
-                    <h2>AI Inventory Assistant</h2>
+              <section className="inventory-section">
+                <div className="inventory-assistant-header">
+                  <div className="inventory-assistant-title">
+                    <span className="inventory-assistant-icon"><Package size={22} /></span>
+                    <div>
+                      <h2>Inventory Assistant</h2>
+                      <p>Stock alerts and restock suggestions for your catalog</p>
+                    </div>
                   </div>
-                  <div className="ai-status">
+                  <div className="inventory-assistant-status">
                     <span className="pulse-dot"></span>
-                    Real-time Monitoring Active
+                    Real-time monitoring active
                   </div>
                 </div>
 
-                {/* AI Insights & Suggestions */}
-                <div className="ai-suggestions-grid">
+                <div className="inventory-suggestions-grid">
                   {inventoryStats.suggestions.length > 0 ? (
                     inventoryStats.suggestions.map((suggestion, idx) => (
                       <div key={idx} className={`suggestion-card ${suggestion.priority}`}>
@@ -533,34 +788,70 @@ export function SellerDashboard() {
                       </div>
                     ))
                   ) : (
-                    <div className="suggestion-card low">
-                      <p>AI Assistant: All stock levels look healthy based on current trends. Great job!</p>
+                    <div className="suggestion-card healthy">
+                      <p>All stock levels look healthy based on current trends. Great job!</p>
                     </div>
                   )}
                 </div>
 
                 <div className="inventory-overview-grid">
-                  {/* Out of Stock Card */}
-                  <div className={`inventory-card ${inventoryStats.outOfStock.length > 0 ? 'critical' : ''}`}>
+                  <div className={`inventory-card inventory-card-out ${inventoryStats.outOfStock.length > 0 ? 'has-alert' : ''}`}>
                     <h3>Out of Stock</h3>
                     <div className="inventory-num">{inventoryStats.outOfStock.length}</div>
                     <p>Products currently unavailable to buyers</p>
                   </div>
 
-                  {/* Low Stock Card */}
-                  <div className={`inventory-card ${inventoryStats.lowStock.length > 0 ? 'warning' : ''}`}>
-                    <h3>Low Stock Warnings</h3>
+                  <div className={`inventory-card inventory-card-low ${inventoryStats.lowStock.length > 0 ? 'has-alert' : ''}`}>
+                    <h3>Low Stock</h3>
                     <div className="inventory-num">{inventoryStats.lowStock.length}</div>
                     <p>Products nearing threshold</p>
                   </div>
 
-                  {/* Total Inventory Card */}
-                  <div className="inventory-card">
+                  <div className="inventory-card inventory-card-total">
                     <h3>Total Items in Stock</h3>
                     <div className="inventory-num">
                       {products.reduce((acc, p) => acc + (p.stock || 0), 0)}
                     </div>
                     <p>Total units across all products</p>
+                  </div>
+                </div>
+
+                <div className="inventory-spotlight-section">
+                  <div className="inventory-section-heading">
+                    <div>
+                      <h3>Inventory Spotlight</h3>
+                      <p>Quick view of products that need immediate attention.</p>
+                    </div>
+                  </div>
+                  <div className="inventory-spotlight-grid">
+                    {inventoryPreviewProducts.map((product) => {
+                      const stockStatus = getStockStatus(product)
+                      return (
+                        <article key={product.id} className="inventory-spotlight-card">
+                          <div className="inventory-spotlight-image">
+                            {product.imageUrl ? (
+                              <img src={product.imageUrl} alt={product.name} />
+                            ) : (
+                              <div className="inventory-image-fallback">
+                                <ShoppingBag size={18} />
+                              </div>
+                            )}
+                          </div>
+                          <div className="inventory-spotlight-content">
+                            <div className="inventory-spotlight-top">
+                              <span className={`status-tag ${stockStatus.class}`}>{stockStatus.label}</span>
+                              <span className="inventory-price">{formatPrice(product.price || 0)}</span>
+                            </div>
+                            <h4>{product.name}</h4>
+                            <p>{categories.find(c => c.id === product.category)?.name || product.category || 'Uncategorized'}</p>
+                            <div className="inventory-spotlight-stats">
+                              <span>Stock: {product.stock || 0}</span>
+                              <span>Threshold: {product.lowStockThreshold || 5}</span>
+                            </div>
+                          </div>
+                        </article>
+                      )
+                    })}
                   </div>
                 </div>
 
@@ -587,10 +878,15 @@ export function SellerDashboard() {
                             <td>
                               <div className="inventory-product-cell">
                                 <img src={product.imageUrl} alt="" className="mini-thumb" />
-                                <span>{product.name}</span>
+                                <div className="inventory-product-text">
+                                  <strong>{product.name}</strong>
+                                  <span>{formatPrice(product.price || 0)}</span>
+                                </div>
                               </div>
                             </td>
-                            <td>{product.category}</td>
+                            <td>
+                              {categories.find(c => c.id === product.category)?.name || product.category}
+                            </td>
                             <td>
                               <span className="stock-count">{product.stock || 0}</span>
                             </td>
@@ -606,7 +902,7 @@ export function SellerDashboard() {
                                 setModalCategory(product.category)
                                 setShowProductModal(true)
                               }}>
-                                ✏️ Update Stock
+                                Update Stock
                               </button>
                             </td>
                           </tr>
@@ -623,158 +919,108 @@ export function SellerDashboard() {
             <div className="seller-dashboard-container" style={{ padding: 0, background: 'none' }}>
               <div className="orders-summary-cards">
                 <div className="summary-card pending">
-                  <span className="summary-icon">📋</span>
+                  <span className="summary-icon"><Package size={18} /></span>
                   <div className="summary-info">
                     <h3>Pending</h3>
                     <p>{pendingOrders.length} Orders</p>
                   </div>
                 </div>
                 <div className="summary-card processing">
-                  <span className="summary-icon">🚚</span>
+                  <span className="summary-icon"><Truck size={18} /></span>
                   <div className="summary-info">
                     <h3>Processing</h3>
                     <p>{processingOrders.length} Orders</p>
                   </div>
                 </div>
+                <div className="summary-card completed">
+                  <span className="summary-icon"><ShoppingBag size={18} /></span>
+                  <div className="summary-info">
+                    <h3>Order History</h3>
+                    <p>{completedOrders.length} Sold</p>
+                  </div>
+                </div>
               </div>
 
-              {/* Pending Orders Section */}
-              <section className="orders-section-card">
-                <div className="section-header">
-                  <h2>📋 Pending Orders</h2>
-                </div>
+              {renderOrderSection({
+                title: 'Pending Orders',
+                description: 'New buyer requests waiting for your confirmation.',
+                list: pendingOrders,
+                emptyMessage: 'No pending orders yet. Great job keeping up.',
+                actionLabel: 'Process Order',
+                actionStatus: 'Processing',
+                actionClassName: 'btn-accept',
+              })}
 
-                {loadingOrderDetails && <div className="loading">Loading order details...</div>}
+              <div style={{ marginTop: '30px' }}>
+                {renderOrderSection({
+                  title: 'Active Deliveries',
+                  description: 'Orders already being prepared or shipped to buyers.',
+                  list: processingOrders,
+                  emptyMessage: 'No active deliveries right now.',
+                  actionLabel: 'Mark Delivered',
+                  actionStatus: 'Delivered',
+                  actionClassName: 'btn-complete',
+                })}
+              </div>
 
-                {!loadingOrderDetails && pendingOrders.length === 0 && (
-                  <div className="empty-state">
-                    <p>No pending orders yet. Great job keeping up! 🎉</p>
-                  </div>
-                )}
-
-                {!loadingOrderDetails && pendingOrders.length > 0 && (
-                  <div className="orders-table-wrapper">
-                    <table className="pending-orders-table">
-                      <thead>
-                        <tr>
-                          <th>Order ID</th>
-                          <th>Buyer Name</th>
-                          <th>Email</th>
-                          <th>Phone</th>
-                          <th>Address</th>
-                          <th>Products</th>
-                          <th>Total</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pendingOrders.map((order) => (
-                          <tr key={order.id} className="order-row">
-                            <td className="order-id">{order.id.slice(0, 8)}...</td>
-                            <td className="buyer-name">{order.buyerName}</td>
-                            <td className="buyer-email">{order.buyerEmail}</td>
-                            <td className="phone">{order.address?.phoneNumber || 'N/A'}</td>
-                            <td className="address">{order.address?.addressLine || 'N/A'}</td>
-                            <td className="products-count">{(order.products || order.items || []).length} item(s)</td>
-                            <td className="total">₱{(order.totalAmount || 0).toFixed(2)}</td>
-                            <td className="action-cell">
-                              <button
-                                className="btn-accept"
-                                onClick={() => updateOrderStatus(order.id, 'Processing')}
-                                title="Mark as Processing"
-                              >
-                                ✓ Process
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </section>
-
-              {/* Processing Orders Section */}
-              {processingOrders.length > 0 && (
-                <section className="orders-section-card" style={{ marginTop: '30px' }}>
-                  <div className="section-header">
-                    <h2>🚚 Processing Orders</h2>
-                  </div>
-
-                  <div className="orders-table-wrapper">
-                    <table className="pending-orders-table">
-                      <thead>
-                        <tr>
-                          <th>Order ID</th>
-                          <th>Buyer Name</th>
-                          <th>Status</th>
-                          <th>Total</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {processingOrders.map((order) => (
-                          <tr key={order.id} className="order-row">
-                            <td className="order-id">{order.id.slice(0, 8)}...</td>
-                            <td className="buyer-name">{order.buyerName}</td>
-                            <td className="status-cell">
-                              <span className={`status-badge status-${order.status?.toLowerCase()}`}>
-                                {order.status}
-                              </span>
-                            </td>
-                            <td className="total">₱{(order.totalAmount || 0).toFixed(2)}</td>
-                            <td className="action-cell">
-                              <button
-                                className="btn-complete"
-                                onClick={() => updateOrderStatus(order.id, 'Delivered')}
-                                title="Mark as Delivered"
-                              >
-                                ✓ Delivered
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
-              )}
+              <div style={{ marginTop: '30px' }}>
+                {renderOrderSection({
+                  title: 'Order History',
+                  description: 'Completed sales with buyer details and sold items.',
+                  list: completedOrders,
+                  emptyMessage: 'No completed sales yet.',
+                })}
+              </div>
             </div>
           )}
 
           {activeView === 'products' && (
-            <div className="seller-dashboard-container" style={{ padding: 0, background: 'none' }}>
-              {/* My Products Section */}
-              <section className="products-section-modern" style={{ maxWidth: '100%', margin: 0 }}>
-                <div className="dashboard-header">
-                  <h2>📦 My Products</h2>
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <span className="product-count">{products.length} products</span>
+            <div className="seller-dashboard-container seller-products-view">
+              <section className="seller-products-section">
+                <div className="panel-header">
+                  <div className="panel-header-text">
+                    <h1>My Products</h1>
+                    <p>Manage your catalog, stock, and listings</p>
+                  </div>
+                  <div className="panel-header-actions">
+                    <span className="seller-product-count">{products.length} {products.length === 1 ? 'product' : 'products'}</span>
                     <button
                       onClick={() => {
                         setEditingProduct(null)
-                        setModalCategory('chair')
+                        setModalCategory(categories.length > 0 ? categories[0].id : '')
                         setShowProductModal(true)
                       }}
                       className="btn-add-product-seller"
                       title="Add New Product"
                     >
-                      + Add Product
+                      <Plus size={16} /> Add Product
                     </button>
                   </div>
                 </div>
 
-                {loading && <div className="loading">Loading...</div>}
+                {loading && <div className="loading">Loading products...</div>}
                 {error && <div className="error-message">{error}</div>}
 
                 {!loading && products.length === 0 && (
-                  <div className="empty-state">
-                    <p>No products yet. Click "Add Product" to get started! 🚀</p>
+                  <div className="empty-state seller-products-empty">
+                    <Package size={40} strokeWidth={1.5} />
+                    <p>No products yet</p>
+                    <span>Add your first bamboo product to start selling</span>
+                    <button
+                      className="btn-add-product-seller"
+                      onClick={() => {
+                        setEditingProduct(null)
+                        setModalCategory(categories.length > 0 ? categories[0].id : '')
+                        setShowProductModal(true)
+                      }}
+                    >
+                      <Plus size={16} /> Add Product
+                    </button>
                   </div>
                 )}
 
                 {!loading && products.length > 0 && (
-                  <div className="products-grid-modern">
+                  <div className="products-grid-modern seller-products-grid">
                     {products.map((product) => (
                       <ProductCard
                         key={product.id}
@@ -783,7 +1029,7 @@ export function SellerDashboard() {
                         onProductUpdated={fetchProducts}
                         onEditProduct={(productToEdit) => {
                           setEditingProduct(productToEdit)
-                          setModalCategory(productToEdit.category || 'chair')
+                          setModalCategory(productToEdit.category || (categories.length > 0 ? categories[0].name.toLowerCase() : ''))
                           setShowProductModal(true)
                         }}
                       />
@@ -795,39 +1041,13 @@ export function SellerDashboard() {
           )}
 
           {activeView === 'messages' && (
-            <div className="seller-dashboard-container" style={{ padding: 0, background: 'none' }}>
-              {/* Messages with Buyers Section */}
-              <section className="messaging-section" style={{ maxWidth: '100%', margin: 0 }}>
-                <div className="dashboard-header">
-                  <h2>💬 Messages with Buyers</h2>
-                </div>
-                <div className="messaging-card" style={{ padding: '40px', background: 'white', borderRadius: '12px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
-                  <div className="messaging-icon" style={{ fontSize: '4rem', marginBottom: '20px' }}>💬</div>
-                  <p className="messaging-description" style={{ fontSize: '1.1rem', color: '#666', marginBottom: '30px' }}>Keep in touch with your customers and respond to their inquiries.</p>
-                  <button
-                    onClick={() => navigate('/chat')}
-                    className="btn-open-chat"
-                    style={{
-                      padding: '14px 32px',
-                      background: '#1b4332',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '50px',
-                      fontWeight: '700',
-                      fontSize: '1rem',
-                      textTransform: 'uppercase',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    Open Messages Panel
-                  </button>
-                </div>
-              </section>
+            <div className="seller-dashboard-container" style={{ padding: '32px', background: 'transparent', minHeight: 'calc(100vh - 140px)' }}>
+              <Chat />
             </div>
           )}
         </div>
-      </main>
+        </main>
+      </div>
 
       <ProductModal
         isOpen={showProductModal}
@@ -840,8 +1060,69 @@ export function SellerDashboard() {
         }}
         onProductAdded={() => fetchProducts()}
       />
+
+      {/* Delivery Message Modal */}
+      {showDeliveryModal && (
+        <div className="modal-overlay" onClick={() => setShowDeliveryModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h3>Add Delivery Message</h3>
+              <button className="modal-close" onClick={() => setShowDeliveryModal(false)}>×</button>
+            </div>
+            <div className="modal-body" style={{ padding: '24px' }}>
+              <p style={{ marginBottom: '16px', color: '#6b7280', fontSize: '14px' }}>
+                Send a personalized message to the buyer about their delivery:
+              </p>
+              <textarea
+                value={deliveryMessage}
+                onChange={(e) => setDeliveryMessage(e.target.value)}
+                placeholder="e.g., We are going to deliver your items today at 2 PM!"
+                rows="4"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
+                  resize: 'vertical'
+                }}
+              />
+              <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                <button
+                  onClick={() => setShowDeliveryModal(false)}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    background: '#f3f4f6',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDelivery}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    background: 'var(--primary-green)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Mark as Delivered
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
-
-

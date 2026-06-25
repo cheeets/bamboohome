@@ -78,7 +78,7 @@ export default function AdminSellerStoreView({ seller, onBack }) {
             <span className="summary-lab">Low Stock</span>
           </div>
           <div className={`summary-item ${inventoryStats.outOfStock > 0 ? 'critical' : ''}`}>
-            <span className="summary-val">{inventoryStats.outOfStock}</span>
+            <span className="stat-value" style={{ fontSize: '1.8rem', fontWeight: 800 }}>{inventoryStats.outOfStock}</span>
             <span className="summary-lab">Out of Stock</span>
           </div>
         </div>

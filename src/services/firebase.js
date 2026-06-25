@@ -3,7 +3,7 @@ import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
 const firebaseConfig = {
-   apiKey: "AIzaSyCFd5ppm-1c-mcTlbWPAobzIkY0BNv34p0",
+  apiKey: "AIzaSyCFd5ppm-1c-mcTlbWPAobzIkY0BNv34p0",
   authDomain: "greennest-7e7bc.firebaseapp.com",
   projectId: "greennest-7e7bc",
   storageBucket: "greennest-7e7bc.firebasestorage.app",

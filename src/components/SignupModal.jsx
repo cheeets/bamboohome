@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { getFriendlyErrorMessage } from '../utils/errorMessages'
 import { useNavigate } from 'react-router-dom'
+import { ImagePlus, UploadCloud } from 'lucide-react'
 import '../css/LoginModal.css'
 
 export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
@@ -13,10 +14,12 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
   const [storePhotoUrl, setStorePhotoUrl] = useState('')
   const [storePhotoFile, setStorePhotoFile] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
+  const [isDragOver, setIsDragOver] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { register } = useAuth()
   const navigate = useNavigate()
+  const fileInputRef = React.useRef(null)
 
   // Prevent body scroll when modal is open
   React.useEffect(() => {
@@ -32,6 +35,7 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
     if (!file) return
 
     try {
+      setError('')
       // Convert file to base64 and compress
       const reader = new FileReader()
       reader.onloadend = () => {
@@ -80,6 +84,16 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
     }
   }
 
+  const handleFileChange = (e) => {
+    handlePhotoUpload(e.target.files?.[0])
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    handlePhotoUpload(e.dataTransfer.files?.[0])
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
@@ -123,11 +137,13 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
   if (!isOpen) return null
 
   return (
-    <>
-      <div className="modal-overlay2" onClick={handleClose}></div>
-      <div className="login-modal2">
+    <div className="modal-overlay2" onClick={handleClose}>
+      <div className="login-modal2" onClick={(e) => e.stopPropagation()}>
         <div className="modal-content2">
           <button className="modal-close" onClick={handleClose}>&times;</button>
+          
+          <h2>Sign Up</h2>
+          
           {error && <div className="error-message">{error}</div>}
           <form onSubmit={handleSubmit}>
             <div className="form-group">
@@ -168,30 +184,69 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
                 </div>
                 <div className="form-group">
                   <label htmlFor="storePhoto">Store Photo / Logo *</label>
+                  <div
+                    className={`upload-dropzone ${isDragOver ? 'drag-over' : ''}`}
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      setIsDragOver(true)
+                    }}
+                    onDragLeave={() => setIsDragOver(false)}
+                    onDrop={handleDrop}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        fileInputRef.current?.click()
+                      }
+                    }}
+                  >
+                    <div className="upload-dropzone-icon">
+                      <UploadCloud size={26} />
+                    </div>
+                    <p className="upload-dropzone-title">Upload your store logo</p>
+                    <p className="upload-dropzone-text">
+                      Click to choose an image or drag and drop it here
+                    </p>
+                    <span className="upload-dropzone-hint">PNG, JPG, or WEBP recommended</span>
+                  </div>
                   {photoPreview && (
                     <div className="photo-preview-container">
+                      <div className="photo-preview-header">
+                        <div className="photo-preview-title">
+                          <ImagePlus size={16} />
+                          <span>Selected store image</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-remove-photo"
+                          onClick={() => {
+                            setPhotoPreview(null)
+                            setStorePhotoUrl('')
+                            setStorePhotoFile(null)
+                            if (fileInputRef.current) {
+                              fileInputRef.current.value = ''
+                            }
+                          }}
+                        >
+                          Remove Photo
+                        </button>
+                      </div>
                       <img src={photoPreview} alt="Store preview" className="store-photo-preview" />
-                      <button
-                        type="button"
-                        className="btn-remove-photo"
-                        onClick={() => {
-                          setPhotoPreview(null)
-                          setStorePhotoUrl('')
-                          setStorePhotoFile(null)
-                        }}
-                      >
-                        Remove Photo
-                      </button>
+                      {storePhotoFile && (
+                        <p className="photo-file-name">{storePhotoFile.name}</p>
+                      )}
                     </div>
                   )}
                   <input
                     type="file"
                     id="storePhoto"
                     accept="image/*"
-                    onChange={(e) => handlePhotoUpload(e.target.files[0])}
+                    onChange={handleFileChange}
                     required={!storePhotoUrl}
                     className="file-input"
-                    placeholder="Upload your store photo"
+                    ref={fileInputRef}
                   />
                 </div>
               </>
@@ -227,6 +282,6 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
           </p>
         </div>
       </div>
-    </>
+    </div>
   )
 }
