@@ -11,7 +11,7 @@
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(5px);
-  z-index: 500;
+  z-index: 1000;
   animation: fadeIn 0.3s ease;
 }
 
@@ -35,7 +35,7 @@
   background-color: #ffffff;
   border-radius: 20px;
   box-shadow: 0 22px 60px rgba(15, 23, 42, 0.18);
-  z-index: 501;
+  z-index: 1001;
   max-width: 1100px;
   width: min(1100px, calc(100% - 32px));
   max-height: 90vh;
@@ -122,13 +122,16 @@
 }
 
 .product-details-name {
-  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  font-size: clamp(1.4rem, 2.5vw, 2rem);
   font-weight: 800;
   color: #101828;
   margin: 0;
-  line-height: 1.15;
+  line-height: 1.3;
   letter-spacing: -0.01em;
   text-transform: none;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .product-details-rating-display {
@@ -515,6 +518,8 @@
 
   .product-details-image-section {
     position: static;
+    aspect-ratio: 1 / 0.8;
+    max-height: 300px;
   }
 
   .product-details-name {
@@ -589,7 +594,7 @@
 }
 
 /* Report Modal */
-.report-modal-overlay {
+.pd-report-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -597,25 +602,28 @@
   bottom: 0;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
-  z-index: 600;
+  z-index: 3000;
   display: flex;
   align-items: center;
   justify-content: center;
   animation: fadeIn 0.2s ease;
 }
 
-.report-modal {
+.pd-report-modal {
   background: white;
   border-radius: 16px;
   width: 90%;
   max-width: 500px;
   max-height: 90vh;
-  overflow-y: auto;
+  overflow: visible;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   animation: slideUpModal 0.3s ease;
+  z-index: 3001;
+  display: flex;
+  flex-direction: column;
 }
 
-.report-modal-header {
+.pd-report-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -623,7 +631,7 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
-.report-modal-header h3 {
+.pd-report-modal-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
@@ -633,7 +641,7 @@
   gap: 10px;
 }
 
-.report-modal-header button {
+.pd-report-modal-header button {
   background: none;
   border: none;
   cursor: pointer;
@@ -644,42 +652,45 @@
   transition: color 0.2s;
 }
 
-.report-modal-header button:hover {
+.pd-report-modal-header button:hover {
   color: #dc2626;
 }
 
-.report-modal-body {
+.pd-report-modal-body {
   padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  overflow-y: auto;
+  flex: 1;
+  max-height: calc(90vh - 120px);
 }
 
-.report-store-name {
+.pd-report-store-name {
   font-size: 14px;
   color: #6b7280;
   margin: 0;
 }
 
-.report-store-name strong {
+.pd-report-store-name strong {
   color: #111827;
   font-weight: 700;
 }
 
-.form-group {
+.pd-form-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.form-group label {
+.pd-form-group label {
   font-size: 14px;
   font-weight: 600;
   color: #374151;
 }
 
-.report-select,
-.report-textarea {
+.pd-report-select,
+.pd-report-textarea {
   padding: 12px;
   border: 2px solid #e5e7eb;
   border-radius: 8px;
@@ -687,26 +698,32 @@
   font-family: inherit;
   color: #111827;
   transition: border-color 0.2s;
+  position: relative;
+  z-index: 10;
 }
 
-.report-select:focus,
-.report-textarea:focus {
+.pd-report-select {
+  background: white;
+}
+
+.pd-report-select:focus,
+.pd-report-textarea:focus {
   outline: none;
   border-color: #dc2626;
 }
 
-.report-textarea {
+.pd-report-textarea {
   resize: vertical;
   min-height: 100px;
 }
 
-.char-count {
+.pd-char-count {
   font-size: 12px;
   color: #9ca3af;
   text-align: right;
 }
 
-.report-warning {
+.pd-report-warning {
   background: #fef3c7;
   border: 1px solid #fbbf24;
   border-radius: 8px;
@@ -715,11 +732,11 @@
   color: #92400e;
 }
 
-.report-warning strong {
+.pd-report-warning strong {
   font-weight: 700;
 }
 
-.report-modal-footer {
+.pd-report-modal-footer {
   padding: 16px 24px;
   border-top: 1px solid #e5e7eb;
   display: flex;
@@ -727,8 +744,8 @@
   justify-content: flex-end;
 }
 
-.btn-cancel,
-.btn-submit-report {
+.pd-btn-cancel,
+.pd-btn-submit-report {
   padding: 10px 20px;
   border-radius: 8px;
   font-size: 14px;
@@ -738,25 +755,25 @@
   border: none;
 }
 
-.btn-cancel {
+.pd-btn-cancel {
   background: #f3f4f6;
   color: #374151;
 }
 
-.btn-cancel:hover {
+.pd-btn-cancel:hover {
   background: #e5e7eb;
 }
 
-.btn-submit-report {
+.pd-btn-submit-report {
   background: #dc2626;
   color: white;
 }
 
-.btn-submit-report:hover:not(:disabled) {
+.pd-btn-submit-report:hover:not(:disabled) {
   background: #b91c1c;
 }
 
-.btn-submit-report:disabled {
+.pd-btn-submit-report:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

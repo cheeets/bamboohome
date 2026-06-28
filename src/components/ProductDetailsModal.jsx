@@ -9,7 +9,7 @@ import { MessageCircle, Minus, Plus, ShoppingCart, X, Flag } from 'lucide-react'
 import '../css/ProductDetailsModal.css'
 
 export function ProductDetailsModal({ isOpen, product, onClose }) {
-  const { user } = useAuth()
+  const { user, userRole } = useAuth()
   const { addToCart } = useCart()
   const navigate = useNavigate()
   const [isAdding, setIsAdding] = useState(false)
@@ -167,6 +167,11 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
       alert('Please login to add items to cart')
       navigate('/')
       onClose()
+      return
+    }
+
+    if (userRole === 'seller' || userRole === 'admin') {
+      alert('Sellers and admins cannot add items to cart')
       return
     }
 
@@ -368,21 +373,21 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
 
       {/* Report Modal */}
       {showReportModal && (
-        <div className="report-modal-overlay" onClick={() => setShowReportModal(false)}>
-          <div className="report-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="report-modal-header">
+        <div className="pd-report-modal-overlay" onClick={() => setShowReportModal(false)}>
+          <div className="pd-report-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="pd-report-modal-header">
               <h3><Flag size={20} /> Report Store</h3>
               <button onClick={() => setShowReportModal(false)}><X size={20} /></button>
             </div>
-            <div className="report-modal-body">
-              <p className="report-store-name">Reporting: <strong>{product.storeName}</strong></p>
+            <div className="pd-report-modal-body">
+              <p className="pd-report-store-name">Reporting: <strong>{product.storeName}</strong></p>
               
-              <div className="form-group">
+              <div className="pd-form-group">
                 <label>Reason for Report *</label>
                 <select 
                   value={reportReason} 
                   onChange={(e) => setReportReason(e.target.value)}
-                  className="report-select"
+                  className="pd-report-select"
                 >
                   <option value="">Select a reason...</option>
                   <option value="Counterfeit Products">Counterfeit or Fake Products</option>
@@ -396,33 +401,33 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
                 </select>
               </div>
 
-              <div className="form-group">
+              <div className="pd-form-group">
                 <label>Additional Details (Optional)</label>
                 <textarea
                   value={reportDetails}
                   onChange={(e) => setReportDetails(e.target.value)}
                   placeholder="Please provide any additional information that will help us investigate..."
                   rows="4"
-                  className="report-textarea"
+                  className="pd-report-textarea"
                   maxLength="500"
                 />
-                <span className="char-count">{reportDetails.length}/500</span>
+                <span className="pd-char-count">{reportDetails.length}/500</span>
               </div>
 
-              <div className="report-warning">
+              <div className="pd-report-warning">
                 <strong>Note:</strong> False reports may result in account suspension. Please only report genuine concerns.
               </div>
             </div>
-            <div className="report-modal-footer">
+            <div className="pd-report-modal-footer">
               <button 
-                className="btn-cancel" 
+                className="pd-btn-cancel" 
                 onClick={() => setShowReportModal(false)}
                 disabled={submittingReport}
               >
                 Cancel
               </button>
               <button 
-                className="btn-submit-report" 
+                className="pd-btn-submit-report" 
                 onClick={handleReportStore}
                 disabled={submittingReport || !reportReason}
               >

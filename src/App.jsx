@@ -32,7 +32,7 @@ function AppContent() {
   return (
     <>
       {showHeader && <Header />}
-      {user && userRole === 'user' && <NotificationListener />}
+      {user && <NotificationListener />}
       <main className={isHomePage ? 'main-content landing' : 'main-content'}>
         <Routes>
           <Route path="/" element={<Home />} />

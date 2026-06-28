@@ -1,0 +1,175 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserRole(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && getUserRole(request.auth.uid) == 'admin';
+    }
+
+    function isSeller() {
+      return isSignedIn() && getUserRole(request.auth.uid) == 'seller';
+    }
+
+    function isUser() {
+      return isSignedIn() && getUserRole(request.auth.uid) == 'user';
+    }
+
+    function isRatingUpdate() {
+      return request.resource.data.sellerId == resource.data.sellerId
+        && request.resource.data.storeName == resource.data.storeName
+        && request.resource.data.category == resource.data.category
+        && request.resource.data.name == resource.data.name
+        && request.resource.data.description == resource.data.description
+        && request.resource.data.price == resource.data.price
+        && request.resource.data.imageUrl == resource.data.imageUrl
+        && request.resource.data.stock == resource.data.stock
+        && request.resource.data.lowStockThreshold == resource.data.lowStockThreshold
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == resource.data.updatedAt
+        && request.resource.data.ratings is list
+        && request.resource.data.ratings.size() == (resource.data.ratings == null ? 0 : resource.data.ratings.size()) + 1;
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.role in ['user', 'seller']
+        && request.resource.data.email is string
+        && request.resource.data.name is string;
+
+      allow update: if isAdmin()
+        || (request.auth.uid == userId
+            && request.resource.data.uid == resource.data.uid
+            && request.resource.data.email == resource.data.email
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.storeName == resource.data.storeName
+            && request.resource.data.storePhotoUrl == resource.data.storePhotoUrl
+            && request.resource.data.name is string);
+
+      allow delete: if isAdmin();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+
+      allow create: if isSignedIn()
+        && (isSeller() || isAdmin())
+        && request.resource.data.sellerId == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.price is number
+        && request.resource.data.category is string;
+
+      function isStockUpdateOnly() {
+          // Allow only stock and updatedAt changes for order processing
+          return request.resource.data.sellerId == resource.data.sellerId
+            && request.resource.data.storeName == resource.data.storeName
+            && request.resource.data.category == resource.data.category
+            && request.resource.data.name == resource.data.name
+            && request.resource.data.description == resource.data.description
+            && request.resource.data.price == resource.data.price
+            && request.resource.data.imageUrl == resource.data.imageUrl
+            && request.resource.data.lowStockThreshold == resource.data.lowStockThreshold
+            && request.resource.data.createdAt == resource.data.createdAt
+            && (request.resource.data.ratings == resource.data.ratings || (request.resource.data.ratings == null && resource.data.ratings == null))
+            && request.resource.data.stock is number
+            && request.resource.data.stock < resource.data.stock;
+        }
+
+      allow update: if isAdmin()
+        || (isSeller()
+            && resource.data.sellerId == request.auth.uid
+            && request.resource.data.sellerId == resource.data.sellerId
+            && request.resource.data.createdAt == resource.data.createdAt)
+        || isRatingUpdate()
+        || isStockUpdateOnly();
+
+      allow delete: if isAdmin()
+        || (isSeller() && resource.data.sellerId == request.auth.uid);
+    }
+
+    match /orders/{orderId} {
+      function isOrderOwner() {
+        return request.auth.uid == resource.data.userId;
+      }
+
+      function isOrderSeller() {
+        return request.auth.uid == resource.data.sellerId;
+      }
+
+      allow read: if isAdmin()
+        || isOrderOwner()
+        || isOrderSeller();
+
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.sellerId is string
+        && request.resource.data.products is list
+        && request.resource.data.totalAmount is number;
+
+      allow update: if isAdmin()
+        || isOrderSeller()
+        || (isOrderOwner() && request.resource.data.userId == resource.data.userId
+            && request.resource.data.status == 'Cancelled');
+
+      allow delete: if false;
+    }
+
+    match /reports/{reportId} {
+      allow create: if isSignedIn()
+        && request.resource.data.reportedBy == request.auth.uid
+        && request.resource.data.sellerId is string
+        && request.resource.data.productId is string
+        && request.resource.data.reason is string;
+
+      allow read: if isAdmin() || request.auth.uid == resource.data.reportedBy;
+      allow update, delete: if isAdmin();
+    }
+
+    match /messages/{messageId} {
+      allow read: if isSignedIn()
+        && request.auth.uid in resource.data.participants;
+
+      allow create: if isSignedIn()
+        && request.resource.data.senderId == request.auth.uid
+        && request.auth.uid in request.resource.data.participants
+        && request.resource.data.receiverId in request.resource.data.participants
+        && request.resource.data.message is string;
+
+      allow update: if isSignedIn()
+        && request.auth.uid in resource.data.participants;
+
+      allow delete: if false;
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn()
+        && (request.auth.uid == resource.data.userId || isAdmin());
+
+      allow create: if isSignedIn()
+        && request.resource.data.userId is string
+        && request.resource.data.message is string;
+
+      allow update: if isSignedIn()
+        && request.auth.uid == resource.data.userId
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.isRead == true;
+
+      allow delete: if false;
+    }
+  }
+}

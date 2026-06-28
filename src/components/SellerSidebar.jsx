@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { db } from '../services/firebase'
 import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
-import { BarChart3, LogOut, Menu, MessageCircle, Package, ShoppingBag, ShoppingCart, Store, User } from 'lucide-react'
+import { AlertTriangle, BarChart3, LogOut, Menu, MessageCircle, Package, ShoppingBag, ShoppingCart, Store, User } from 'lucide-react'
 import '../css/AdminSidebar.css'
 
 export default function SellerSidebar({ activeView, setActiveView }) {
@@ -13,6 +13,7 @@ export default function SellerSidebar({ activeView, setActiveView }) {
   const [unreadMessages, setUnreadMessages] = useState(0)
   const [pendingOrders, setPendingOrders] = useState(0)
   const [lowStockCount, setLowStockCount] = useState(0)
+  const [unreadNotifications, setUnreadNotifications] = useState(0)
 
   useEffect(() => {
     const handleResize = () => {
@@ -60,6 +61,13 @@ export default function SellerSidebar({ activeView, setActiveView }) {
     return () => unsubscribe()
   }, [user])
 
+  useEffect(() => {
+    if (!user) return
+    const q = query(collection(db, 'notifications'), where('userId', '==', user.uid), where('isRead', '==', false))
+    const unsubscribe = onSnapshot(q, (snapshot) => setUnreadNotifications(snapshot.size))
+    return () => unsubscribe()
+  }, [user])
+
   return (
     <div className="dashboard-sidebar-slot">
       <button className="sidebar-toggle-admin" onClick={() => setSidebarOpen(!sidebarOpen)}>
@@ -103,6 +111,10 @@ export default function SellerSidebar({ activeView, setActiveView }) {
 
           <div className="nav-group">
             <span className="nav-label">Communication</span>
+            <button className={`nav-item ${activeView === 'notifications' ? 'active' : ''}`} onClick={() => { setActiveView('notifications'); window.scrollTo(0, 0) }}>
+              <AlertTriangle size={16} /> Notifications
+              {unreadNotifications > 0 && <span className="notif-badge">{unreadNotifications}</span>}
+            </button>
             <button className={`nav-item ${activeView === 'messages' ? 'active' : ''}`} onClick={() => { setActiveView('messages'); window.scrollTo(0, 0) }}>
               <MessageCircle size={16} /> Messages
               {unreadMessages > 0 && <span className="notif-badge">{unreadMessages}</span>}

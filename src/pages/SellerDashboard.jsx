@@ -20,7 +20,7 @@ import {
 } from 'chart.js'
 import { notifyOrderStatusChange } from '../services/notificationService'
 import { calculateAverageRating, getStockStatus, formatPrice } from '../utils/rating'
-import { BarChart3, MessageCircle, Package, Plus, ShoppingBag, Truck } from 'lucide-react'
+import { AlertTriangle, BarChart3, MessageCircle, Package, Plus, ShoppingBag, Truck } from 'lucide-react'
 import '../css/BuyerLayout.css'
 import '../css/ShopPage.css'
 import '../css/SellerDashboard.css'
@@ -44,6 +44,7 @@ export function SellerDashboard() {
 
   const [products, setProducts] = useState([])
   const [orders, setOrders] = useState([])
+  const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [analyticsTimeframe, setAnalyticsTimeframe] = useState('month')
@@ -497,6 +498,30 @@ export function SellerDashboard() {
       setOrdersWithDetails([])
     }
   }, [orders])
+
+  // Listen for seller notifications
+  useEffect(() => {
+    if (!user) return
+    console.log('🔔 Listening for notifications for user:', user.uid)
+    const q = query(collection(db, 'notifications'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'))
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      console.log('📥 Received notifications:', notifs)
+      setNotifications(notifs)
+    }, (error) => {
+      console.error('❌ Error fetching notifications:', error)
+    })
+    return unsubscribe
+  }, [user])
+
+  const markNotificationAsRead = async (notificationId) => {
+    try {
+      const notifRef = doc(db, 'notifications', notificationId)
+      await updateDoc(notifRef, { isRead: true })
+    } catch (err) {
+      console.error('Error marking notification as read:', err)
+    }
+  }
 
   const canManage = useMemo(() => userRole === 'seller', [userRole])
 
@@ -1037,6 +1062,61 @@ export function SellerDashboard() {
                   </div>
                 )}
               </section>
+            </div>
+          )}
+
+          {activeView === 'notifications' && (
+            <div className="seller-dashboard-container" style={{ padding: '32px', background: 'transparent', minHeight: 'calc(100vh - 140px)' }}>
+              <div className="admin-page-header">
+                <div className="header-content">
+                  <h1>Notifications</h1>
+                  <p className="header-subtitle">Alerts and updates from GreenNest</p>
+                </div>
+              </div>
+
+              <div className="admin-content-area" style={{ padding: 0 }}>
+                {notifications.length === 0 ? (
+                  <div className="empty-state" style={{ marginTop: '60px' }}>
+                    <AlertTriangle size={48} />
+                    <p>No notifications yet</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {notifications.map((notif) => (
+                      <div
+                        key={notif.id}
+                        className={`notification-card ${!notif.isRead ? 'unread' : ''}`}
+                        style={{
+                          cursor: 'pointer',
+                          borderLeftColor: notif.type === 'seller_warning' ? '#F59E0B' : '#43A047'
+                        }}
+                        onClick={() => !notif.isRead && markNotificationAsRead(notif.id)}
+                      >
+                        <div
+                          className="notification-icon"
+                          style={{
+                            color: notif.type === 'seller_warning' ? '#F59E0B' : '#43A047',
+                            background: notif.type === 'seller_warning' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(34, 197, 94, 0.1)'
+                          }}
+                        >
+                          <AlertTriangle size={20} />
+                        </div>
+                        <div className="notification-content">
+                          <h4 className="notification-title">
+                            {notif.type === 'seller_warning' ? 'Warning from Admin' : 'Notification'}
+                          </h4>
+                          <p className="notification-message">{notif.message}</p>
+                          {notif.createdAt?.toDate && (
+                            <span className="notification-order">
+                              {notif.createdAt.toDate().toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

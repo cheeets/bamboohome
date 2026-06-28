@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { db } from '../services/firebase'
 import { collection, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore'
-import { Flag, CheckCircle, XCircle, Eye, Trash2, AlertTriangle } from 'lucide-react'
+import { sendSellerWarning } from '../services/notificationService'
+import { Flag, CheckCircle, XCircle, Eye, Trash2, AlertTriangle, Send } from 'lucide-react'
 import '../css/AdminReports.css'
 
 export default function AdminReports() {
@@ -9,6 +10,9 @@ export default function AdminReports() {
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('all')
   const [selectedReport, setSelectedReport] = useState(null)
+  const [showWarningModal, setShowWarningModal] = useState(false)
+  const [warningMessage, setWarningMessage] = useState('Please adhere to our platform policies. Violations may result in account suspension.')
+  const [sendingWarning, setSendingWarning] = useState(false)
 
   useEffect(() => {
     fetchReports()
@@ -66,6 +70,43 @@ export default function AdminReports() {
     } catch (err) {
       console.error('Error deleting report:', err)
       alert('Failed to delete report')
+    }
+  }
+
+  const handleSendWarning = async () => {
+    if (!selectedReport || !selectedReport.sellerId) {
+      alert('Cannot send warning: Seller information missing')
+      return
+    }
+
+    if (!warningMessage.trim()) {
+      alert('Please enter a warning message')
+      return
+    }
+
+    try {
+      setSendingWarning(true)
+      const success = await sendSellerWarning(
+        selectedReport.sellerId,
+        warningMessage,
+        selectedReport.id,
+        selectedReport.reason
+      )
+
+      if (success) {
+        alert('Warning sent to seller successfully!')
+        setShowWarningModal(false)
+        setWarningMessage('Please adhere to our platform policies. Violations may result in account suspension.')
+        // Update report status to resolved
+        await handleUpdateStatus(selectedReport.id, 'resolved')
+      } else {
+        alert('Failed to send warning to seller')
+      }
+    } catch (err) {
+      console.error('Error sending warning:', err)
+      alert('Failed to send warning: ' + err.message)
+    } finally {
+      setSendingWarning(false)
     }
   }
 
@@ -306,6 +347,14 @@ export default function AdminReports() {
               {selectedReport.status === 'pending' && (
                 <>
                   <button
+                    className="btn-warning-modal"
+                    onClick={() => setShowWarningModal(true)}
+                    title="Send Warning"
+                  >
+                    <AlertTriangle size={16} />
+                    Send Warning
+                  </button>
+                  <button
                     className="btn-resolve-modal"
                     onClick={() => {
                       handleUpdateStatus(selectedReport.id, 'resolved')
@@ -333,6 +382,53 @@ export default function AdminReports() {
               >
                 <Trash2 size={16} />
                 Delete Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showWarningModal && selectedReport && (
+        <div className="warning-modal-overlay" onClick={() => !sendingWarning && setShowWarningModal(false)}>
+          <div className="warning-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="warning-modal-header">
+              <h3><AlertTriangle size={20} /> Send Warning to Seller</h3>
+              <button onClick={() => !sendingWarning && setShowWarningModal(false)} disabled={sendingWarning}>×</button>
+            </div>
+            <div className="warning-modal-body">
+              <div className="warning-info">
+                <p><strong>Store:</strong> {selectedReport.storeName}</p>
+                <p><strong>Seller Email:</strong> {selectedReport.sellerEmail}</p>
+                <p><strong>Reason:</strong> {selectedReport.reason}</p>
+              </div>
+              <div className="warning-form-group">
+                <label>Warning Message *</label>
+                <textarea
+                  value={warningMessage}
+                  onChange={(e) => setWarningMessage(e.target.value)}
+                  placeholder="Enter the warning message to send to the seller..."
+                  className="warning-textarea"
+                  rows={5}
+                  disabled={sendingWarning}
+                />
+                <p className="char-count">{warningMessage.length} characters</p>
+              </div>
+            </div>
+            <div className="warning-modal-footer">
+              <button
+                className="btn-cancel-warning"
+                onClick={() => setShowWarningModal(false)}
+                disabled={sendingWarning}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-send-warning"
+                onClick={handleSendWarning}
+                disabled={sendingWarning || !warningMessage.trim()}
+              >
+                <Send size={16} />
+                {sendingWarning ? 'Sending...' : 'Send Warning'}
               </button>
             </div>
           </div>

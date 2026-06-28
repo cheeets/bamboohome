@@ -26,6 +26,11 @@
   overflow: hidden;
 }
 
+.notification-card.unread {
+  background: #FFFBEB;
+  border-left-color: #F59E0B;
+}
+
 .notification-card::before {
   content: '';
   position: absolute;

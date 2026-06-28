@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { db } from '../services/firebase'
+import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { 
   BarChart3, 
   LogOut, 
@@ -19,8 +21,18 @@ import '../css/AdminSidebar.css'
 
 export default function AdminSidebar({ activeView, setActiveView, activeSubView, setActiveSubView }) {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 1024)
+  const [pendingReportCount, setPendingReportCount] = useState(0)
   const { logout } = useAuth()
   const navigate = useNavigate()
+
+  // Listen for pending reports
+  useEffect(() => {
+    const q = query(collection(db, 'reports'), where('status', '==', 'pending'))
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setPendingReportCount(snapshot.size)
+    })
+    return unsubscribe
+  }, [])
 
   useEffect(() => {
     const handleResize = () => {
@@ -114,8 +126,31 @@ export default function AdminSidebar({ activeView, setActiveView, activeSubView,
             <button
               className={`nav-item ${activeView === 'reports' ? 'active' : ''}`}
               onClick={() => handleMenuClick('reports')}
+              style={{ position: 'relative' }}
             >
               <Flag size={16} /> Store Reports
+              {pendingReportCount > 0 && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '8px',
+                    right: '12px',
+                    background: '#EF4444',
+                    color: 'white',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    borderRadius: '9999px',
+                    minWidth: '18px',
+                    height: '18px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 5px'
+                  }}
+                >
+                  {pendingReportCount}
+                </span>
+              )}
             </button>
           </div>
         </nav>

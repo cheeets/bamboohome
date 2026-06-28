@@ -54,6 +54,11 @@ export function ProductCard({ product, onProductUpdated, onEditProduct, onViewDe
       return
     }
 
+    if (userRole === 'seller' || userRole === 'admin') {
+      alert('Sellers and admins cannot add items to cart')
+      return
+    }
+
     if (maxStock <= 0) {
       return
     }

@@ -1,15 +1,17 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { db } from '../services/firebase'
-import { collection, query, where, onSnapshot } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
-import { X, Package, Truck } from 'lucide-react'
+import { X, Package, Truck, AlertTriangle } from 'lucide-react'
 import '../css/Notifications.css'
 
 export function NotificationListener() {
   const { user } = useAuth()
   const [notifications, setNotifications] = useState([])
   const [previousOrders, setPreviousOrders] = useState({})
+  const processedNotificationIdsRef = useRef(new Set())
 
+  // Listen for order status changes
   useEffect(() => {
     if (!user) return
 
@@ -76,6 +78,78 @@ export function NotificationListener() {
     return () => unsubscribe()
   }, [user])
 
+  // Listen for notifications from 'notifications' collection (including seller warnings)
+  useEffect(() => {
+    if (!user) return
+
+    const q = query(
+      collection(db, 'notifications'),
+      where('userId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    )
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const data = change.doc.data()
+          const notificationId = change.doc.id
+          
+          // Only process if we haven't already processed this notification
+          if (!processedNotificationIdsRef.current.has(notificationId)) {
+            processedNotificationIdsRef.current.add(notificationId)
+            
+            let notification = null
+            
+            if (data.type === 'seller_warning') {
+              notification = {
+                id: `${notificationId}_${Date.now()}`,
+                type: 'warning',
+                icon: <AlertTriangle size={24} />,
+                title: 'Warning from Admin',
+                message: data.message,
+                color: '#f59e0b',
+                timestamp: new Date()
+              }
+            } else if (data.type === 'order_accepted') {
+              notification = {
+                id: `${notificationId}_${Date.now()}`,
+                orderId: data.relatedId,
+                type: 'accepted',
+                icon: <Package size={24} />,
+                title: 'Order Accepted!',
+                message: data.message,
+                color: '#22c55e',
+                timestamp: new Date()
+              }
+            } else if (data.type === 'out_for_delivery') {
+              notification = {
+                id: `${notificationId}_${Date.now()}`,
+                orderId: data.relatedId,
+                type: 'delivery',
+                icon: <Truck size={24} />,
+                title: 'Out for Delivery!',
+                message: data.message,
+                color: '#3b82f6',
+                timestamp: new Date()
+              }
+            }
+            
+            if (notification) {
+              setNotifications(prevNotifs => [notification, ...prevNotifs])
+              
+              // Auto-remove after 10 seconds
+              setTimeout(() => {
+                setNotifications(prevNotifs => prevNotifs.filter(n => n.id !== notification.id))
+              }, 10000)
+            }
+          }
+        }
+      })
+    })
+
+    return () => unsubscribe()
+  }, [user])
+
   const handleClose = (id) => {
     setNotifications(prev => prev.filter(n => n.id !== id))
   }
@@ -96,7 +170,9 @@ export function NotificationListener() {
           <div className="notification-content">
             <h4 className="notification-title">{notif.title}</h4>
             <p className="notification-message">{notif.message}</p>
-            <span className="notification-order">Order #{notif.orderId.slice(0, 8).toUpperCase()}</span>
+            {notif.orderId && (
+              <span className="notification-order">Order #{notif.orderId.slice(0, 8).toUpperCase()}</span>
+            )}
           </div>
           <button 
             className="notification-close"

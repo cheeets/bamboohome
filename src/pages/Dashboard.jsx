@@ -568,69 +568,89 @@ export function AdminOrdersDashboard() {
               {activeSubView === 'inventory-overview' && (
                 <>
                   {renderViewHeader('Global Inventory', `Monitoring ${allProducts.filter(p => !p.deleted).length} products across all sellers`)}
-                  <div className="inventory-grid-admin">
-                    <div className="admin-inventory-table-wrapper">
-                      <table className="admin-table">
-                        <thead>
-                          <tr>
-                            <th>Product</th>
-                            <th>Seller</th>
-                            <th>Price</th>
-                            <th>Stock</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {allProducts.filter(p => !p.deleted).map(product => {
-                            const isOutOfStock = (product.stock || 0) <= 0
-                            const isLowStock = (product.stock || 0) <= (product.lowStockThreshold || 5)
-                            return (
-                              <tr key={product.id}>
-                                <td>
-                                  <div className="product-cell-admin">
-                                    <img src={product.imageUrl} alt="" className="mini-thumb" />
-                                    <span>{product.name}</span>
-                                  </div>
-                                </td>
-                                <td>{product.storeName || 'N/A'}</td>
-                                <td>{formatPrice(product.price)}</td>
-                                <td>
+                  <div className="products-grid-container" style={{ padding: '24px' }}>
+                    <div className="products-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px' }}>
+                      {allProducts.filter(p => !p.deleted).map(product => {
+                        const isOutOfStock = (product.stock || 0) <= 0
+                        const isLowStock = (product.stock || 0) <= (product.lowStockThreshold || 5)
+                        return (
+                          <div key={product.id} className="product-card" style={{ 
+                            background: '#fff', 
+                            borderRadius: '12px', 
+                            boxShadow: '0 2px 12px rgba(0,0,0,0.08)', 
+                            overflow: 'hidden',
+                            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                          }}>
+                            <div className="product-image-container" style={{ position: 'relative', aspectRatio: '1', overflow: 'hidden', background: '#f5f5f5' }}>
+                              <img src={product.imageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              <div style={{
+                                position: 'absolute', top: '8px', right: '8px',
+                                padding: '4px 10px', borderRadius: '16px', fontSize: '12px', fontWeight: '600',
+                                background: isOutOfStock ? '#EF4444' : isLowStock ? '#F59E0B' : '#10B981',
+                                color: '#fff'
+                              }}>
+                                {isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock' : 'Healthy'}
+                              </div>
+                            </div>
+                            <div className="product-info" style={{ padding: '16px' }}>
+                              <h3 style={{ fontSize: '15px', fontWeight: '600', margin: '0 0 8px 0', color: '#1f2937' }}>{product.name}</h3>
+                              <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 8px 0' }}>Seller: {product.storeName || 'N/A'}</p>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                <span style={{ fontSize: '16px', fontWeight: '700', color: '#1f2937' }}>{formatPrice(product.price)}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ fontSize: '13px', color: '#6b7280' }}>Stock:</span>
                                   <input 
                                     type="number" 
                                     defaultValue={product.stock} 
-                                    className="admin-stock-input"
+                                    style={{ 
+                                      width: '60px', 
+                                      padding: '4px 8px', 
+                                      border: '1px solid #e5e7eb', 
+                                      borderRadius: '6px', 
+                                      fontSize: '13px',
+                                      textAlign: 'center'
+                                    }}
                                     onBlur={(e) => handleAdminUpdateStock(product.id, e.target.value)}
                                   />
-                                </td>
-                                <td>
-                                  <span className={`status-tag ${isOutOfStock ? 'out' : isLowStock ? 'low' : 'ok'}`}>
-                                    {isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock' : 'Healthy'}
-                                  </span>
-                                </td>
-                                <td>
-                                  <div className="admin-actions-cell">
-                                    <button 
-                                      className="action-btn"
-                                      onClick={() => handleAdminEditProduct(product.id, product)}
-                                      title="Edit Product"
-                                    >
-                                      <Edit size={16} />
-                                    </button>
-                                    <button 
-                                      className="btn-admin-delete"
-                                      onClick={() => handleAdminDeleteProduct(product.id)}
-                                      title="Delete Product"
-                                    >
-                                      <Trash2 size={16} />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button 
+                                  style={{ 
+                                    flex: 1, 
+                                    padding: '8px 12px', 
+                                    border: 'none', 
+                                    borderRadius: '8px', 
+                                    background: '#3b82f6', 
+                                    color: '#fff', 
+                                    fontSize: '13px', 
+                                    fontWeight: '500',
+                                    cursor: 'pointer'
+                                  }}
+                                  onClick={() => handleAdminEditProduct(product.id, product)}
+                                >
+                                  Edit
+                                </button>
+                                <button 
+                                  style={{ 
+                                    padding: '8px 12px', 
+                                    border: 'none', 
+                                    borderRadius: '8px', 
+                                    background: '#EF4444', 
+                                    color: '#fff', 
+                                    fontSize: '13px', 
+                                    fontWeight: '500',
+                                    cursor: 'pointer'
+                                  }}
+                                  onClick={() => handleAdminDeleteProduct(product.id)}
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 </>
@@ -639,36 +659,61 @@ export function AdminOrdersDashboard() {
               {activeSubView === 'low-stock-alerts' && (
                 <>
                   {renderViewHeader('Low Stock Alerts', 'Items requiring immediate attention')}
-                  <div className="inventory-grid-admin">
-                    <div className="alerts-list-admin">
-                      {allProducts.filter(p => !p.deleted && (p.stock || 0) <= (p.lowStockThreshold || 5)).length > 0 ? (
-                        allProducts.filter(p => !p.deleted && (p.stock || 0) <= (p.lowStockThreshold || 5)).map(product => (
-                          <div key={product.id} className={`admin-alert-card ${(product.stock || 0) <= 0 ? 'critical' : 'warning'}`}>
-                            <div className="alert-info">
-                              <h3>{product.name}</h3>
-                              <p>Seller: {product.storeName}</p>
-                              <p className="stock-info">Current Stock: <strong>{product.stock || 0}</strong> (Threshold: {product.lowStockThreshold || 5})</p>
+                  <div style={{ padding: '24px' }}>
+                    {allProducts.filter(p => !p.deleted && (p.stock || 0) <= (p.lowStockThreshold || 5)).length > 0 ? (
+                      <div className="products-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px' }}>
+                        {allProducts.filter(p => !p.deleted && (p.stock || 0) <= (p.lowStockThreshold || 5)).map(product => {
+                          const isOutOfStock = (product.stock || 0) <= 0
+                          return (
+                            <div key={product.id} style={{ 
+                              background: isOutOfStock ? '#fef2f2' : '#fffbeb', 
+                              borderRadius: '12px', 
+                              boxShadow: '0 2px 12px rgba(0,0,0,0.08)', 
+                              overflow: 'hidden',
+                              padding: '20px'
+                            }}>
+                              <h3 style={{ fontSize: '16px', fontWeight: '600', margin: '0 0 8px 0', color: isOutOfStock ? '#991B1B' : '#92400E' }}>
+                                {product.name}
+                              </h3>
+                              <p style={{ fontSize: '14px', color: isOutOfStock ? '#dc2626' : '#d97706', margin: '0 0 12px 0' }}>
+                                Seller: {product.storeName}
+                              </p>
+                              <p style={{ fontSize: '14px', color: '#4b5563', margin: '0 0 16px 0' }}>
+                                Current Stock: <strong>{product.stock || 0}</strong> (Threshold: {product.lowStockThreshold || 5})
+                              </p>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button 
+                                  style={{ 
+                                    flex: 1, 
+                                    padding: '8px 12px', 
+                                    border: 'none', 
+                                    borderRadius: '8px', 
+                                    background: isOutOfStock ? '#EF4444' : '#F59E0B', 
+                                    color: '#fff', 
+                                    fontSize: '13px', 
+                                    fontWeight: '500',
+                                    cursor: 'pointer'
+                                  }}
+                                  onClick={() => handleAdminEditProduct(product.id, product)}
+                                >
+                                  Update Stock
+                                </button>
+                              </div>
                             </div>
-                            <div className="alert-actions">
-                              <button onClick={() => navigate('/shop')} title="View in Shop">
-                                <Store size={18} />
-                              </button>
-                              <button 
-                                className="primary" 
-                                onClick={() => handleAdminEditProduct(product.id, product)}
-                                title="Update Product / Stock"
-                              >
-                                <Edit size={18} />
-                              </button>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="no-alerts">
-                          <p>🎉 All products are well-stocked!</p>
-                        </div>
-                      )}
-                    </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div style={{ 
+                        textAlign: 'center', 
+                        padding: '60px 20px', 
+                        background: '#fff', 
+                        borderRadius: '12px', 
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.08)' 
+                      }}>
+                        <p style={{ fontSize: '16px', color: '#6b7280', margin: 0 }}>🎉 All products are well-stocked!</p>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
