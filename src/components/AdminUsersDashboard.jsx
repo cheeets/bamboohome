@@ -1,17 +1,19 @@
 import React, { useState } from 'react'
-import { 
-  Users, 
-  User, 
-  ShieldCheck, 
-  Store, 
-  ShoppingBag, 
-  Search, 
-  Calendar, 
-  Trash2, 
-  X, 
-  CheckCircle2, 
+import {
+  Users,
+  User,
+  ShieldCheck,
+  Store,
+  ShoppingBag,
+  Search,
+  Calendar,
+  Trash2,
+  X,
+  CheckCircle2,
   AlertCircle,
-  Edit
+  Edit,
+  Ban,
+  RotateCcw
 } from 'lucide-react'
 import '../css/AdminUsersDashboard.css'
 
@@ -24,9 +26,13 @@ export default function AdminUsersDashboard({
   setFilterRole,
   handleDeleteUser,
   handleChangeRole,
+  handleSuspendUser,
+  handleUnsuspendUser,
   formatDate,
   onViewStore,
 }) {
+  const [suspensionReason, setSuspensionReason] = useState('')
+  const [showSuspensionModal, setShowSuspensionModal] = useState(null)
   const [showUserDetails, setShowUserDetails] = useState(false)
   const [selectedUser, setSelectedUser] = useState(null)
   const [editingRole, setEditingRole] = useState({})
@@ -193,24 +199,43 @@ export default function AdminUsersDashboard({
                       </td>
                       <td>{formatDate(user.createdAt)}</td>
                       <td>
-                        <div className="action-cell">
-                          {user.role === 'seller' && (
-                            <button className="icon-btn" onClick={() => onViewStore(user)} title="View Store">
-                              <Store size={16} />
-                            </button>
-                          )}
-                          <button className="icon-btn edit" onClick={() => handleViewUser(user)} title="Change Permissions">
-                            <Edit size={16} />
-                          </button>
-                          <button className="icon-btn delete" onClick={() => {
-                            if (window.confirm(`Revoke all access for ${user.email}?`)) {
-                              handleDeleteUser(user.id)
-                            }
-                          }} title="Delete User">
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
+        <div className="action-cell">
+          {user.role === 'seller' && (
+            <button className="icon-btn" onClick={() => onViewStore(user)} title="View Store">
+              <Store size={16} />
+            </button>
+          )}
+          {user.role === 'seller' && !user.isSuspended && (
+            <button className="icon-btn" style={{ color: '#EF4444' }} onClick={() => {
+              console.log('🎯 Suspend button clicked for user:', user.email, user.id)
+              setShowSuspensionModal(user)
+              setSuspensionReason('')
+            }} title="Suspend Seller">
+              <Ban size={16} />
+            </button>
+          )}
+          {user.role === 'seller' && user.isSuspended && (
+            <button className="icon-btn" style={{ color: '#10B981' }} onClick={() => {
+              console.log('🔄 Unsuspend button clicked for user:', user.email, user.id)
+              if (window.confirm(`Unsuspend ${user.email}?`)) {
+                handleUnsuspendUser(user.id)
+              }
+            }} title="Unsuspend Seller">
+              <RotateCcw size={16} />
+            </button>
+          )}
+          <button className="icon-btn edit" onClick={() => handleViewUser(user)} title="Change Permissions">
+            <Edit size={16} />
+          </button>
+          <button className="icon-btn delete" onClick={() => {
+            if (window.confirm(`Revoke all access for ${user.email}?`)) {
+              handleDeleteUser(user.id)
+            }
+          }} title="Delete User">
+            <Trash2 size={16} />
+          </button>
+        </div>
+      </td>
                     </tr>
                   ))
                 )}
@@ -250,6 +275,12 @@ export default function AdminUsersDashboard({
                       <span className="detail-value">{selectedUser.storeName || 'Not provided'}</span>
                     </div>
                   )}
+                  {selectedUser.isSuspended && (
+                    <div className="detail-row" style={{ color: '#EF4444' }}>
+                      <span className="detail-label">Status</span>
+                      <span className="detail-value">⚠️ Suspended: {selectedUser.suspensionReason || 'No reason provided'}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -276,6 +307,16 @@ export default function AdminUsersDashboard({
 
             <div className="modal-footer">
               <button className="btn-secondary" onClick={handleCloseDetails}>Close</button>
+              {selectedUser.role === 'seller' && selectedUser.isSuspended && (
+                <button className="btn-primary" onClick={() => {
+                  if (window.confirm(`Unsuspend ${selectedUser.email}?`)) {
+                    handleUnsuspendUser(selectedUser.id)
+                    handleCloseDetails()
+                  }
+                }}>
+                  <RotateCcw size={14} /> Unsuspend Seller
+                </button>
+              )}
               <button className="btn-danger" onClick={() => {
                 if (window.confirm(`Are you sure you want to delete ${selectedUser.email}?`)) {
                   handleDeleteUser(selectedUser.id)
@@ -283,6 +324,59 @@ export default function AdminUsersDashboard({
                 }
               }}>
                 <Trash2 size={14} /> Delete User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSuspensionModal && (
+        <div className="modal-overlay" onClick={() => setShowSuspensionModal(null)}>
+          <div className="user-details-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title-group">
+                <div className="modal-avatar" style={{ background: '#FEE2E2', color: '#EF4444' }}>
+                  <Ban size={24} />
+                </div>
+                <div>
+                  <h2>Suspend Seller</h2>
+                  <p className="user-email">{showSuspensionModal.email}</p>
+                </div>
+              </div>
+              <button className="modal-close-btn" onClick={() => setShowSuspensionModal(null)}><X size={20} /></button>
+            </div>
+
+            <div className="modal-body">
+              <div className="modal-section">
+                <h3><AlertCircle size={18} /> Suspension Reason</h3>
+                <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
+                  Please provide a reason for suspending this seller. The seller will be notified.
+                </p>
+                <textarea
+                  value={suspensionReason}
+                  onChange={(e) => setSuspensionReason(e.target.value)}
+                  placeholder="e.g., Violation of platform guidelines, multiple reports, etc."
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    minHeight: '100px',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setShowSuspensionModal(null)}>Cancel</button>
+              <button className="btn-danger" onClick={() => {
+                console.log('✅ Confirm Suspension clicked:', { userId: showSuspensionModal.id, reason: suspensionReason })
+                handleSuspendUser(showSuspensionModal.id, suspensionReason)
+                setShowSuspensionModal(null)
+              }}>
+                <Ban size={14} /> Confirm Suspension
               </button>
             </div>
           </div>

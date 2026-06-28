@@ -40,7 +40,88 @@ ChartJS.register(
 
 export function SellerDashboard() {
   const navigate = useNavigate()
-  const { user, userRole } = useAuth()
+  const { user, userRole, isSuspended, suspensionReason, logout } = useAuth()
+
+  if (isSuspended) {
+    return (
+      <div className="admin-dashboard-layout">
+        <div className="dashboard-shell-inner">
+          <main className="admin-main-content dashboard-main-panel">
+            <div className="admin-page-header">
+              <div className="header-content">
+                <h1>Account Suspended</h1>
+                <p className="header-subtitle">Your seller account has been suspended.</p>
+              </div>
+            </div>
+            <div className="admin-content-area" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 200px)' }}>
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '60px 40px', 
+                background: '#fff', 
+                borderRadius: '16px', 
+                boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                maxWidth: '500px',
+                width: '100%'
+              }}>
+                <AlertTriangle size={80} style={{ color: '#EF4444', marginBottom: '24px' }} />
+                <h2 style={{ 
+                  fontSize: '28px',
+                  fontWeight: '700',
+                  color: '#1f2937', 
+                  marginBottom: '16px'
+                }}>Your Account is Suspended</h2>
+                <p style={{ 
+                  color: '#4b5563', 
+                  fontSize: '16px', 
+                  lineHeight: '1.6',
+                  marginBottom: '24px'
+                }}>
+                  {suspensionReason || 'Your seller account has been suspended due to a violation of our platform guidelines.'}
+                </p>
+                <p style={{ 
+                  color: '#6b7280', 
+                  fontSize: '14px', 
+                  marginBottom: '32px'
+                }}>
+                  If you believe this is a mistake, please contact our support team for assistance.
+                </p>
+                <button
+                  onClick={async () => {
+                    try {
+                      await logout()
+                      navigate('/shop')
+                    } catch (error) {
+                      console.error('Logout error:', error)
+                    }
+                  }}
+                  style={{
+                    background: '#EF4444',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '14px 32px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    width: '100%'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#DC2626'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = '#EF4444'
+                  }}
+                >
+                  Log Out
+                </button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    )
+  }
 
   const [products, setProducts] = useState([])
   const [orders, setOrders] = useState([])

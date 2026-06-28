@@ -19,13 +19,16 @@ import './css/App.css'
 
 function AppContent() {
   const location = useLocation()
-  const { user, userRole } = useAuth()
+  const { user, userRole, isSuspended } = useAuth()
   const isHomePage = location.pathname === '/' || location.pathname === '/home'
   const showHeader = !isHomePage
 
   if (isHomePage && user) {
     if (userRole === 'admin') return <Navigate to="/dashboard" replace />
-    if (userRole === 'seller') return <Navigate to="/seller/dashboard" replace />
+    if (userRole === 'seller') {
+      if (isSuspended) return <Navigate to="/shop" replace />
+      return <Navigate to="/seller/dashboard" replace />
+    }
     return <Navigate to="/shop" replace />
   }
 

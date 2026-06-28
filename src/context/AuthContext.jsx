@@ -16,6 +16,8 @@ export function AuthProvider({ children }) {
   const [userName, setUserName] = useState('')
   const [storeName, setStoreName] = useState('')
   const [storePhotoUrl, setStorePhotoUrl] = useState('')
+  const [isSuspended, setIsSuspended] = useState(false)
+  const [suspensionReason, setSuspensionReason] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -33,6 +35,8 @@ export function AuthProvider({ children }) {
             setUserName(data.name || data.displayName || '')
             setStoreName(data.storeName || '')
             setStorePhotoUrl(data.storePhotoUrl || '')
+            setIsSuspended(data.isSuspended || false)
+            setSuspensionReason(data.suspensionReason || '')
           }
         } else {
           setUser(null)
@@ -40,6 +44,8 @@ export function AuthProvider({ children }) {
           setUserName('')
           setStoreName('')
           setStorePhotoUrl('')
+          setIsSuspended(false)
+          setSuspensionReason('')
         }
       } catch (error) {
         console.error('Error fetching user data:', error)
@@ -164,6 +170,8 @@ export function AuthProvider({ children }) {
     userName,
     storeName,
     storePhotoUrl,
+    isSuspended,
+    suspensionReason,
     loading,
     authLoading: loading,
     register,

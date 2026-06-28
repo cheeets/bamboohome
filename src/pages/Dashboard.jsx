@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../services/firebase'
-import { collection, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, doc, updateDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 import { Bar, Pie } from 'react-chartjs-2'
 import {
@@ -11,7 +11,7 @@ import {
   PointElement,
   LineElement,
   BarElement,
-  ArcElement, 
+  ArcElement,
   Title,
   Tooltip,
   Legend,
@@ -191,6 +191,94 @@ export function AdminOrdersDashboard() {
     } catch (err) {
       console.error('Error updating user role:', err)
       alert('Failed to update user role: ' + err.message)
+    }
+  }
+
+  const handleSuspendUser = async (userId, reason) => {
+    console.log('🔴 handleSuspendUser called with:', { userId, reason })
+    try {
+      const userRef = doc(db, 'users', userId)
+      console.log('📝 Updating Firestore document for user:', userId)
+      await updateDoc(userRef, {
+        isSuspended: true,
+        suspensionReason: reason || 'No reason provided',
+        suspendedAt: new Date(),
+        updatedAt: new Date(),
+      })
+
+      setAllUsers(prev =>
+        prev.map((user) =>
+          user.id === userId ? {
+            ...user,
+            isSuspended: true,
+            suspensionReason: reason || 'No reason provided',
+            suspendedAt: new Date()
+          } : user
+        )
+      )
+
+      // Send notification to the seller
+      const user = allUsers.find(u => u.id === userId)
+      if (user) {
+        console.log('📨 Sending notification to suspended seller:', user.email)
+        const notificationData = {
+          userId,
+          message: `Your seller account has been suspended. Reason: ${reason || 'No reason provided'}`,
+          type: 'seller_warning',
+          isRead: false,
+          createdAt: serverTimestamp(),
+        }
+        await addDoc(collection(db, 'notifications'), notificationData)
+      }
+
+      alert('Seller suspended successfully')
+    } catch (err) {
+      console.error('❌ Error suspending user:', err)
+      alert('Failed to suspend seller: ' + err.message)
+    }
+  }
+
+  const handleUnsuspendUser = async (userId) => {
+    console.log('🟢 handleUnsuspendUser called with:', { userId })
+    try {
+      const userRef = doc(db, 'users', userId)
+      console.log('📝 Updating Firestore document for user:', userId)
+      await updateDoc(userRef, {
+        isSuspended: false,
+        suspensionReason: null,
+        suspendedAt: null,
+        updatedAt: new Date(),
+      })
+
+      setAllUsers(prev =>
+        prev.map((user) =>
+          user.id === userId ? {
+            ...user,
+            isSuspended: false,
+            suspensionReason: null,
+            suspendedAt: null
+          } : user
+        )
+      )
+
+      // Send notification to the seller
+      const user = allUsers.find(u => u.id === userId)
+      if (user) {
+        console.log('📨 Sending notification to unsuspended seller:', user.email)
+        const notificationData = {
+          userId,
+          message: 'Your seller account has been unsuspended.',
+          type: 'order_update',
+          isRead: false,
+          createdAt: serverTimestamp(),
+        }
+        await addDoc(collection(db, 'notifications'), notificationData)
+      }
+
+      alert('Seller unsuspended successfully')
+    } catch (err) {
+      console.error('❌ Error unsuspending user:', err)
+      alert('Failed to unsuspend seller: ' + err.message)
     }
   }
 
@@ -526,6 +614,8 @@ export function AdminOrdersDashboard() {
                 setFilterRole={setFilterRole}
                 handleDeleteUser={handleDeleteUser}
                 handleChangeRole={handleChangeRole}
+                handleSuspendUser={handleSuspendUser}
+                handleUnsuspendUser={handleUnsuspendUser}
                 formatDate={formatDate}
                 activeSubView={activeSubView}
                 onViewStore={handleViewStore}

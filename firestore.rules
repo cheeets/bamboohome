@@ -14,7 +14,11 @@ service cloud.firestore {
     }
 
     function isSeller() {
-      return isSignedIn() && getUserRole(request.auth.uid) == 'seller';
+      return isSignedIn() && getUserRole(request.auth.uid) == 'seller'
+    }
+
+    function isNotSuspended() {
+      return isSignedIn() && !get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isSuspended
     }
 
     function isUser() {
@@ -69,6 +73,7 @@ service cloud.firestore {
 
       allow create: if isSignedIn()
         && (isSeller() || isAdmin())
+        && isNotSuspended()
         && request.resource.data.sellerId == request.auth.uid
         && request.resource.data.name is string
         && request.resource.data.price is number
@@ -92,6 +97,7 @@ service cloud.firestore {
 
       allow update: if isAdmin()
         || (isSeller()
+            && isNotSuspended()
             && resource.data.sellerId == request.auth.uid
             && request.resource.data.sellerId == resource.data.sellerId
             && request.resource.data.createdAt == resource.data.createdAt)
@@ -99,7 +105,7 @@ service cloud.firestore {
         || isStockUpdateOnly();
 
       allow delete: if isAdmin()
-        || (isSeller() && resource.data.sellerId == request.auth.uid);
+        || (isSeller() && isNotSuspended() && resource.data.sellerId == request.auth.uid);
     }
 
     match /orders/{orderId} {
@@ -122,7 +128,7 @@ service cloud.firestore {
         && request.resource.data.totalAmount is number;
 
       allow update: if isAdmin()
-        || isOrderSeller()
+        || (isOrderSeller() && isNotSuspended())
         || (isOrderOwner() && request.resource.data.userId == resource.data.userId
             && request.resource.data.status == 'Cancelled');
 
