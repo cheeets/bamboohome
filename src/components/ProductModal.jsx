@@ -234,14 +234,19 @@ export function ProductModal({ isOpen, category, editingProduct, onClose, onProd
         storeName: editingProduct?.storeName || storeName || 'GreenNest',
       }
 
+      console.log('🧪 Product data being saved:', productData)
+      console.log('🧪 Current user:', user)
+
       if (editingProduct) {
         // Update existing product
+        console.log('🧪 Updating existing product:', editingProduct.id)
         await updateDoc(doc(db, 'products', editingProduct.id), {
           ...productData,
           updatedAt: serverTimestamp(),
         })
       } else {
         // Add new product
+        console.log('🧪 Creating new product')
         await addDoc(collection(db, 'products'), {
           ...productData,
           createdAt: serverTimestamp(),

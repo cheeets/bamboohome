@@ -16,6 +16,7 @@ import {
   Title,
   Tooltip,
   Legend,
+  Filler,
 } from 'chart.js'
 import { Edit, Trash2, Store } from 'lucide-react'
 import { ProductModal } from '../components/ProductModal'
@@ -42,7 +43,8 @@ ChartJS.register(
   ArcElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 )
 
 export function AdminOrdersDashboard() {

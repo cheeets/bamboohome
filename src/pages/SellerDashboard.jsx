@@ -17,6 +17,7 @@ import {
   Title,
   Tooltip,
   Legend,
+  Filler,
 } from 'chart.js'
 import { notifyOrderStatusChange } from '../services/notificationService'
 import { calculateAverageRating, getStockStatus, formatPrice } from '../utils/rating'
@@ -36,7 +37,8 @@ ChartJS.register(
   ArcElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 )
 
 export function SellerDashboard() {
