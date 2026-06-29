@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useConfirmation } from '../context/ConfirmationContext'
 import {
   Users,
   User,
@@ -31,7 +32,10 @@ export default function AdminUsersDashboard({
   formatDate,
   onViewStore,
 }) {
+  const { openConfirmation } = useConfirmation()
   const [suspensionReason, setSuspensionReason] = useState('')
+  const [suspensionDuration, setSuspensionDuration] = useState(1)
+  const [suspensionUnit, setSuspensionUnit] = useState('days')
   const [showSuspensionModal, setShowSuspensionModal] = useState(null)
   const [showUserDetails, setShowUserDetails] = useState(false)
   const [selectedUser, setSelectedUser] = useState(null)
@@ -217,9 +221,11 @@ export default function AdminUsersDashboard({
           {user.role === 'seller' && user.isSuspended && (
             <button className="icon-btn" style={{ color: '#10B981' }} onClick={() => {
               console.log('🔄 Unsuspend button clicked for user:', user.email, user.id)
-              if (window.confirm(`Unsuspend ${user.email}?`)) {
-                handleUnsuspendUser(user.id)
-              }
+              openConfirmation({
+                title: 'Unsuspend Seller',
+                message: `Unsuspend ${user.email}?`,
+                onConfirm: () => handleUnsuspendUser(user.id)
+              })
             }} title="Unsuspend Seller">
               <RotateCcw size={16} />
             </button>
@@ -227,10 +233,14 @@ export default function AdminUsersDashboard({
           <button className="icon-btn edit" onClick={() => handleViewUser(user)} title="Change Permissions">
             <Edit size={16} />
           </button>
-          <button className="icon-btn delete" onClick={() => {
-            if (window.confirm(`Revoke all access for ${user.email}?`)) {
-              handleDeleteUser(user.id)
-            }
+          <button className="icon-btn delete" onClick={(e) => {
+            console.log('Delete button clicked for user:', user)
+            console.log('Calling handleDeleteUser with:', user.id)
+            openConfirmation({
+              title: 'Revoke Access',
+              message: `Revoke all access for ${user.email}?`,
+              onConfirm: () => handleDeleteUser(user.id)
+            })
           }} title="Delete User">
             <Trash2 size={16} />
           </button>
@@ -276,10 +286,18 @@ export default function AdminUsersDashboard({
                     </div>
                   )}
                   {selectedUser.isSuspended && (
-                    <div className="detail-row" style={{ color: '#EF4444' }}>
-                      <span className="detail-label">Status</span>
-                      <span className="detail-value">⚠️ Suspended: {selectedUser.suspensionReason || 'No reason provided'}</span>
-                    </div>
+                    <>
+                      <div className="detail-row" style={{ color: '#EF4444' }}>
+                        <span className="detail-label">Status</span>
+                        <span className="detail-value">⚠️ Suspended: {selectedUser.suspensionReason || 'No reason provided'}</span>
+                      </div>
+                      {selectedUser.suspensionEndAt && (
+                        <div className="detail-row">
+                          <span className="detail-label">Suspension Ends</span>
+                          <span className="detail-value">{formatDate(selectedUser.suspensionEndAt)}</span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -309,19 +327,29 @@ export default function AdminUsersDashboard({
               <button className="btn-secondary" onClick={handleCloseDetails}>Close</button>
               {selectedUser.role === 'seller' && selectedUser.isSuspended && (
                 <button className="btn-primary" onClick={() => {
-                  if (window.confirm(`Unsuspend ${selectedUser.email}?`)) {
-                    handleUnsuspendUser(selectedUser.id)
-                    handleCloseDetails()
-                  }
+                  openConfirmation({
+                    title: 'Unsuspend Seller',
+                    message: `Unsuspend ${selectedUser.email}?`,
+                    onConfirm: () => {
+                      handleUnsuspendUser(selectedUser.id)
+                      handleCloseDetails()
+                    }
+                  })
                 }}>
                   <RotateCcw size={14} /> Unsuspend Seller
                 </button>
               )}
               <button className="btn-danger" onClick={() => {
-                if (window.confirm(`Are you sure you want to delete ${selectedUser.email}?`)) {
-                  handleDeleteUser(selectedUser.id)
-                  handleCloseDetails()
-                }
+                console.log('Delete button in user details clicked for:', selectedUser)
+                openConfirmation({
+                  title: 'Delete User',
+                  message: `Are you sure you want to delete ${selectedUser.email}?`,
+                  onConfirm: () => {
+                    console.log('onConfirm called in user details modal')
+                    handleDeleteUser(selectedUser.id)
+                    handleCloseDetails()
+                  }
+                })
               }}>
                 <Trash2 size={14} /> Delete User
               </button>
@@ -363,17 +391,59 @@ export default function AdminUsersDashboard({
                     borderRadius: '8px',
                     fontSize: '14px',
                     minHeight: '100px',
-                    resize: 'vertical'
+                    resize: 'vertical',
+                    marginBottom: '24px'
                   }}
                 />
+              </div>
+              
+              <div className="modal-section">
+                <h3><AlertCircle size={18} /> Suspension Duration</h3>
+                <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
+                  Set how long the seller will be suspended. After this time, the account will be automatically unsuspended.
+                </p>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    min="1"
+                    value={suspensionDuration}
+                    onChange={(e) => setSuspensionDuration(Math.max(1, parseInt(e.target.value) || 1))}
+                    style={{
+                      width: '120px',
+                      padding: '12px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px'
+                    }}
+                  />
+                  <select
+                    value={suspensionUnit}
+                    onChange={(e) => setSuspensionUnit(e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px'
+                    }}
+                  >
+                    <option value="hours">Hours</option>
+                    <option value="days">Days</option>
+                  </select>
+                </div>
               </div>
             </div>
 
             <div className="modal-footer">
               <button className="btn-secondary" onClick={() => setShowSuspensionModal(null)}>Cancel</button>
               <button className="btn-danger" onClick={() => {
-                console.log('✅ Confirm Suspension clicked:', { userId: showSuspensionModal.id, reason: suspensionReason })
-                handleSuspendUser(showSuspensionModal.id, suspensionReason)
+                console.log('✅ Confirm Suspension clicked:', { 
+                  userId: showSuspensionModal.id, 
+                  reason: suspensionReason,
+                  duration: suspensionDuration,
+                  unit: suspensionUnit
+                })
+                handleSuspendUser(showSuspensionModal.id, suspensionReason, suspensionDuration, suspensionUnit)
                 setShowSuspensionModal(null)
               }}>
                 <Ban size={14} /> Confirm Suspension

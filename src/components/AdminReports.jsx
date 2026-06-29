@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react'
+import { useConfirmation } from '../context/ConfirmationContext'
 import { db } from '../services/firebase'
 import { collection, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore'
 import { sendSellerWarning } from '../services/notificationService'
 import { Flag, CheckCircle, XCircle, Eye, Trash2, AlertTriangle, Send } from 'lucide-react'
+import { Toast } from './Toast'
 import '../css/AdminReports.css'
 
 export default function AdminReports() {
+  const { openConfirmation } = useConfirmation()
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('all')
@@ -13,6 +16,8 @@ export default function AdminReports() {
   const [showWarningModal, setShowWarningModal] = useState(false)
   const [warningMessage, setWarningMessage] = useState('Please adhere to our platform policies. Violations may result in account suspension.')
   const [sendingWarning, setSendingWarning] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
+  const [toastType, setToastType] = useState('success')
 
   useEffect(() => {
     fetchReports()
@@ -33,7 +38,8 @@ export default function AdminReports() {
       setReports(reportsList)
     } catch (err) {
       console.error('Error fetching reports:', err)
-      alert('Failed to load reports: ' + err.message)
+      setToastMessage('Failed to load reports: ' + err.message)
+      setToastType('error')
     } finally {
       setLoading(false)
     }
@@ -52,35 +58,45 @@ export default function AdminReports() {
           report.id === reportId ? { ...report, status: newStatus, reviewed: true } : report
         )
       )
-      alert(`Report marked as ${newStatus}`)
+      setToastMessage(`Report marked as ${newStatus}`)
+      setToastType('success')
     } catch (err) {
       console.error('Error updating report:', err)
-      alert('Failed to update report status')
+      setToastMessage('Failed to update report status')
+      setToastType('error')
     }
   }
 
   const handleDeleteReport = async (reportId) => {
-    if (!window.confirm('Are you sure you want to delete this report?')) return
-
-    try {
-      await deleteDoc(doc(db, 'reports', reportId))
-      setReports(prev => prev.filter(r => r.id !== reportId))
-      setSelectedReport(null)
-      alert('Report deleted successfully')
-    } catch (err) {
-      console.error('Error deleting report:', err)
-      alert('Failed to delete report')
-    }
+    openConfirmation({
+      title: 'Delete Report',
+      message: 'Are you sure you want to delete this report?',
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, 'reports', reportId))
+          setReports(prev => prev.filter(r => r.id !== reportId))
+          setSelectedReport(null)
+          setToastMessage('Report deleted successfully')
+          setToastType('success')
+        } catch (err) {
+          console.error('Error deleting report:', err)
+          setToastMessage('Failed to delete report')
+          setToastType('error')
+        }
+      }
+    })
   }
 
   const handleSendWarning = async () => {
     if (!selectedReport || !selectedReport.sellerId) {
-      alert('Cannot send warning: Seller information missing')
+      setToastMessage('Cannot send warning: Seller information missing')
+      setToastType('error')
       return
     }
 
     if (!warningMessage.trim()) {
-      alert('Please enter a warning message')
+      setToastMessage('Please enter a warning message')
+      setToastType('error')
       return
     }
 
@@ -94,17 +110,20 @@ export default function AdminReports() {
       )
 
       if (success) {
-        alert('Warning sent to seller successfully!')
+        setToastMessage('Warning sent to seller successfully!')
+        setToastType('success')
         setShowWarningModal(false)
         setWarningMessage('Please adhere to our platform policies. Violations may result in account suspension.')
         // Update report status to resolved
         await handleUpdateStatus(selectedReport.id, 'resolved')
       } else {
-        alert('Failed to send warning to seller')
+        setToastMessage('Failed to send warning to seller')
+        setToastType('error')
       }
     } catch (err) {
       console.error('Error sending warning:', err)
-      alert('Failed to send warning: ' + err.message)
+      setToastMessage('Failed to send warning: ' + err.message)
+      setToastType('error')
     } finally {
       setSendingWarning(false)
     }
@@ -433,6 +452,15 @@ export default function AdminReports() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setToastMessage('')}
+        />
       )}
     </div>
   )

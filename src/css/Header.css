@@ -1,7 +1,7 @@
 /* Shopee-inspired marketplace header */
 :root {
   --header-top-height: 36px;
-  --header-main-height: 64px;
+  --header-main-height: 80px;
   --header-total-height: calc(var(--header-top-height) + var(--header-main-height));
 }
 
@@ -95,7 +95,7 @@
 }
 
 .header-logo-img {
-  height: 34px;
+  height: 64px;
   width: auto;
   object-fit: contain;
 }

@@ -7,6 +7,7 @@ import { useCart } from '../context/CartContext'
 import { ProductDetailsModal } from './ProductDetailsModal'
 import { rateStore, calculateAverageRating, formatPrice } from '../utils/rating'
 import { ArrowLeft, MessageCircle, ShoppingCart, User, X } from 'lucide-react'
+import { Toast } from './Toast'
 import '../css/SellerStoreModal.css'
 
 export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, onClose }) {
@@ -24,6 +25,8 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
   const [selectedCategory, setSelectedTabCategory] = useState('all')
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [showProductDetails, setShowProductDetails] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
+  const [toastType, setToastType] = useState('success')
 
   useEffect(() => {
     if (isOpen && sellerId) {
@@ -69,7 +72,8 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
 
   const handleRateStore = async (rating) => {
     if (!user) {
-      alert('Please login to rate this store')
+      setToastMessage('Please login to rate this store')
+      setToastType('info')
       return
     }
 
@@ -79,9 +83,11 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
       setUserRating(rating)
       // Refresh seller data to show new rating
       fetchSellerData()
-      alert('Thank you for rating this store!')
+      setToastMessage('Thank you for rating this store!')
+      setToastType('success')
     } catch (err) {
-      alert(`Failed to submit store rating: ${err.message}`)
+      setToastMessage(`Failed to submit store rating: ${err.message}`)
+      setToastType('error')
     } finally {
       setSubmittingRating(false)
     }
@@ -111,7 +117,8 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
   const handleAddToCart = (e, product) => {
     e.stopPropagation() // Prevent modal close if overlay is clicked
     if (!user) {
-      alert('Please login to add items to cart')
+      setToastMessage('Please login to add items to cart')
+      setToastType('info')
       return
     }
     
@@ -124,7 +131,8 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
       sellerId: product.sellerId
     }, 1)
     
-    alert(`✓ Added ${product.name} to cart!`)
+    setToastMessage(`✓ Added ${product.name} to cart!`)
+    setToastType('success')
     console.log('✓ Added to cart:', product.name)
   }
 
@@ -396,6 +404,15 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
             setShowProductDetails(false)
             setSelectedProduct(null)
           }}
+        />
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setToastMessage('')}
         />
       )}
     </>

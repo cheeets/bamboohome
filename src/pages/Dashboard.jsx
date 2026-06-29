@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { db } from '../services/firebase'
 import { collection, getDocs, query, orderBy, doc, updateDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
+import { useConfirmation } from '../context/ConfirmationContext'
 import { Bar, Pie } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
@@ -30,6 +31,7 @@ import AdminProductsDashboard from '../components/AdminProductsDashboard'
 import AdminCategoriesDashboard from '../components/AdminCategoriesDashboard'
 import AdminSellerPerformance from '../components/AdminSellerPerformance'
 import AdminReports from '../components/AdminReports'
+import { Toast } from '../components/Toast'
 
 ChartJS.register(
   CategoryScale,
@@ -45,6 +47,7 @@ ChartJS.register(
 
 export function AdminOrdersDashboard() {
   const { user, userRole } = useAuth()
+  const { openConfirmation } = useConfirmation()
   const navigate = useNavigate()
   const [allOrders, setAllOrders] = useState([])
   const [allUsers, setAllUsers] = useState([])
@@ -59,6 +62,8 @@ export function AdminOrdersDashboard() {
   const [selectedSeller, setSelectedSeller] = useState(null)
   const [editingProduct, setEditingProduct] = useState(null)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
+  const [toastType, setToastType] = useState('success')
 
   useEffect(() => {
     if (!user || userRole !== 'admin') {
@@ -127,9 +132,12 @@ export function AdminOrdersDashboard() {
           order.id === orderId ? { ...order, status: newStatus } : order
         )
       )
+      setToastMessage('Order status updated successfully')
+      setToastType('success')
     } catch (err) {
       console.error('Error updating order status:', err)
-      alert('Failed to update order status. Please try again.')
+      setToastMessage('Failed to update order status. Please try again.')
+      setToastType('error')
     }
   }
 
@@ -157,20 +165,23 @@ export function AdminOrdersDashboard() {
   }
 
   const handleDeleteUser = async (userId) => {
+    console.log('handleDeleteUser called with userId:', userId)
     try {
-      if (!window.confirm('Are you sure you want to delete this user?')) return;
-      
+      console.log('Updating user document in Firestore')
       const userRef = doc(db, 'users', userId)
       await updateDoc(userRef, {
         deleted: true,
         deletedAt: new Date(),
       })
 
+      console.log('Updating local state')
       setAllUsers(prev => prev.filter((user) => user.id !== userId))
-      alert('User deleted successfully')
+      setToastMessage('User deleted successfully')
+      setToastType('success')
     } catch (err) {
       console.error('Error deleting user:', err)
-      alert('Failed to delete user: ' + err.message)
+      setToastMessage('Failed to delete user: ' + err.message)
+      setToastType('error')
     }
   }
 
@@ -187,22 +198,36 @@ export function AdminOrdersDashboard() {
           user.id === userId ? { ...user, role: newRole } : user
         )
       )
-      alert(`User role updated to ${newRole}`)
+      setToastMessage(`User role updated to ${newRole}`)
+      setToastType('success')
     } catch (err) {
       console.error('Error updating user role:', err)
-      alert('Failed to update user role: ' + err.message)
+      setToastMessage('Failed to update user role: ' + err.message)
+      setToastType('error')
     }
   }
 
-  const handleSuspendUser = async (userId, reason) => {
-    console.log('🔴 handleSuspendUser called with:', { userId, reason })
+  const handleSuspendUser = async (userId, reason, duration, unit) => {
+    console.log('🔴 handleSuspendUser called with:', { userId, reason, duration, unit })
     try {
+      // Calculate suspension end time
+      const now = new Date()
+      const suspensionEndAt = new Date(now)
+      if (unit === 'hours') {
+        suspensionEndAt.setHours(now.getHours() + duration)
+      } else if (unit === 'days') {
+        suspensionEndAt.setDate(now.getDate() + duration)
+      }
+
       const userRef = doc(db, 'users', userId)
       console.log('📝 Updating Firestore document for user:', userId)
       await updateDoc(userRef, {
         isSuspended: true,
         suspensionReason: reason || 'No reason provided',
-        suspendedAt: new Date(),
+        suspendedAt: now,
+        suspensionEndAt: suspensionEndAt,
+        suspensionDuration: duration,
+        suspensionUnit: unit,
         updatedAt: new Date(),
       })
 
@@ -212,7 +237,10 @@ export function AdminOrdersDashboard() {
             ...user,
             isSuspended: true,
             suspensionReason: reason || 'No reason provided',
-            suspendedAt: new Date()
+            suspendedAt: now,
+            suspensionEndAt: suspensionEndAt,
+            suspensionDuration: duration,
+            suspensionUnit: unit
           } : user
         )
       )
@@ -221,9 +249,10 @@ export function AdminOrdersDashboard() {
       const user = allUsers.find(u => u.id === userId)
       if (user) {
         console.log('📨 Sending notification to suspended seller:', user.email)
+        const durationText = `${duration} ${unit}${duration > 1 ? 's' : ''}`
         const notificationData = {
           userId,
-          message: `Your seller account has been suspended. Reason: ${reason || 'No reason provided'}`,
+          message: `Your seller account has been suspended for ${durationText}. Reason: ${reason || 'No reason provided'}`,
           type: 'seller_warning',
           isRead: false,
           createdAt: serverTimestamp(),
@@ -231,10 +260,12 @@ export function AdminOrdersDashboard() {
         await addDoc(collection(db, 'notifications'), notificationData)
       }
 
-      alert('Seller suspended successfully')
+      setToastMessage('Seller suspended successfully')
+      setToastType('success')
     } catch (err) {
       console.error('❌ Error suspending user:', err)
-      alert('Failed to suspend seller: ' + err.message)
+      setToastMessage('Failed to suspend seller: ' + err.message)
+      setToastType('error')
     }
   }
 
@@ -275,10 +306,12 @@ export function AdminOrdersDashboard() {
         await addDoc(collection(db, 'notifications'), notificationData)
       }
 
-      alert('Seller unsuspended successfully')
+      setToastMessage('Seller unsuspended successfully')
+      setToastType('success')
     } catch (err) {
       console.error('❌ Error unsuspending user:', err)
-      alert('Failed to unsuspend seller: ' + err.message)
+      setToastMessage('Failed to unsuspend seller: ' + err.message)
+      setToastType('error')
     }
   }
 
@@ -300,23 +333,33 @@ export function AdminOrdersDashboard() {
           p.id === productId ? { ...p, stock: parseInt(newStock) || 0 } : p
         )
       )
-      alert('Stock updated successfully')
+      setToastMessage('Stock updated successfully')
+      setToastType('success')
     } catch (err) {
       console.error('Error updating stock:', err)
-      alert('Failed to update stock')
+      setToastMessage('Failed to update stock')
+      setToastType('error')
     }
   }
 
   const handleAdminDeleteProduct = async (productId) => {
-    try {
-      const productRef = doc(db, 'products', productId)
-      await deleteDoc(productRef)
-      setAllProducts(prev => prev.filter(p => p.id !== productId))
-      alert('Product deleted successfully')
-    } catch (err) {
-      console.error('Error deleting product:', err)
-      alert('Failed to delete product: ' + err.message)
-    }
+    openConfirmation({
+      title: 'Delete Product',
+      message: 'Are you sure you want to delete this product?',
+      onConfirm: async () => {
+        try {
+          const productRef = doc(db, 'products', productId)
+          await deleteDoc(productRef)
+          setAllProducts(prev => prev.filter(p => p.id !== productId))
+          setToastMessage('Product deleted successfully')
+          setToastType('success')
+        } catch (err) {
+          console.error('Error deleting product:', err)
+          setToastMessage('Failed to delete product: ' + err.message)
+          setToastType('error')
+        }
+      }
+    })
   }
 
   const handleAdminEditProduct = (productId, productData) => {
@@ -827,6 +870,15 @@ export function AdminOrdersDashboard() {
           category={editingProduct.category}
           onClose={handleCloseEditModal}
           onProductAdded={handleCloseEditModal}
+        />
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setToastMessage('')}
         />
       )}
     </div>

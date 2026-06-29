@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { rateStore, calculateAverageRating, getStockStatus, formatPrice } from '../utils/rating'
 import { MessageCircle, Minus, Plus, ShoppingCart, X, Flag } from 'lucide-react'
+import { Toast } from './Toast'
 import '../css/ProductDetailsModal.css'
 
 export function ProductDetailsModal({ isOpen, product, onClose }) {
@@ -25,6 +26,8 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
   const [reportReason, setReportReason] = useState('')
   const [reportDetails, setReportDetails] = useState('')
   const [submittingReport, setSubmittingReport] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
+  const [toastType, setToastType] = useState('success')
 
   useEffect(() => {
     if (isOpen && product?.sellerId) {
@@ -47,7 +50,8 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
 
   const handleRateProduct = async (rating) => {
     if (!user) {
-      alert('Please login to rate this product')
+      setToastMessage('Please login to rate this product')
+      setToastType('info')
       navigate('/')
       onClose()
       return
@@ -63,7 +67,8 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
         const currentData = productSnap.data()
         const existingRating = currentData.ratings?.find(r => r.userId === user.uid)
         if (existingRating) {
-          alert('You have already rated this product.')
+          setToastMessage('You have already rated this product.')
+          setToastType('info')
           setSubmittingRating(false)
           return
         }
@@ -77,10 +82,12 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
         })
       })
       setUserRating(rating)
-      alert('Thank you for rating this product!')
+      setToastMessage('Thank you for rating this product!')
+      setToastType('success')
     } catch (err) {
       console.error('Error rating product:', err)
-      alert(`Failed to submit rating: ${err.message}. Please ensure you have applied the latest Firestore rules.`)
+      setToastMessage(`Failed to submit rating: ${err.message}. Please ensure you have applied the latest Firestore rules.`)
+      setToastType('error')
     } finally {
       setSubmittingRating(false)
     }
@@ -88,7 +95,8 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
 
   const handleRateStore = async (rating) => {
     if (!user) {
-      alert('Please login to rate this store')
+      setToastMessage('Please login to rate this store')
+      setToastType('info')
       navigate('/')
       onClose()
       return
@@ -99,13 +107,15 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
       const success = await rateStore(product.sellerId, user.uid, rating)
       if (success) {
         setStoreRating(rating)
-        alert('Thank you for rating this store!')
+        setToastMessage('Thank you for rating this store!')
+        setToastType('success')
         // Refresh seller data to show new rating
         fetchSellerData()
       }
     } catch (err) {
       console.error('Error rating store:', err)
-      alert(`Failed to submit store rating: ${err.message}. Please ensure you have applied the latest Firestore rules.`)
+      setToastMessage(`Failed to submit store rating: ${err.message}. Please ensure you have applied the latest Firestore rules.`)
+      setToastType('error')
     } finally {
       setSubmittingStoreRating(false)
     }
@@ -113,12 +123,14 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
 
   const handleReportStore = async () => {
     if (!user) {
-      alert('Please login to report a store')
+      setToastMessage('Please login to report a store')
+      setToastType('info')
       return
     }
 
     if (!reportReason.trim()) {
-      alert('Please select a reason for reporting')
+      setToastMessage('Please select a reason for reporting')
+      setToastType('info')
       return
     }
 
@@ -140,13 +152,15 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
         reviewed: false
       })
       
-      alert('Report submitted successfully. Admin will review it soon.')
+      setToastMessage('Report submitted successfully. Admin will review it soon.')
+      setToastType('success')
       setShowReportModal(false)
       setReportReason('')
       setReportDetails('')
     } catch (err) {
       console.error('Error submitting report:', err)
-      alert('Failed to submit report. Please try again.')
+      setToastMessage('Failed to submit report. Please try again.')
+      setToastType('error')
     } finally {
       setSubmittingReport(false)
     }
@@ -164,14 +178,16 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
 
   const handleAddToCart = async (product, quantity = 1) => {
     if (!user) {
-      alert('Please login to add items to cart')
+      setToastMessage('Please login to add items to cart')
+      setToastType('info')
       navigate('/')
       onClose()
       return
     }
 
     if (userRole === 'seller' || userRole === 'admin') {
-      alert('Sellers and admins cannot add items to cart')
+      setToastMessage('Sellers and admins cannot add items to cart')
+      setToastType('info')
       return
     }
 
@@ -390,13 +406,8 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
                   className="pd-report-select"
                 >
                   <option value="">Select a reason...</option>
-                  <option value="Counterfeit Products">Counterfeit or Fake Products</option>
+                  <option value="Counterfeit Products">Fake Products</option>
                   <option value="Misleading Information">Misleading Product Information</option>
-                  <option value="Poor Quality">Consistently Poor Quality</option>
-                  <option value="Scam">Suspected Scam or Fraud</option>
-                  <option value="Inappropriate Content">Inappropriate Content</option>
-                  <option value="Harassment">Harassment or Abuse</option>
-                  <option value="Violation">Terms of Service Violation</option>
                   <option value="Other">Other</option>
                 </select>
               </div>
@@ -436,6 +447,15 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setToastMessage('')}
+        />
       )}
     </>
   )

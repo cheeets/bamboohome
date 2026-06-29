@@ -4,41 +4,48 @@ import { db } from '../services/firebase'
 import { doc, deleteDoc } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
+import { useConfirmation } from '../context/ConfirmationContext'
 import { ProductDetailsModal } from './ProductDetailsModal'
 import { SellerStoreModal } from './SellerStoreModal'
 import { calculateAverageRating, getStockStatus, formatPrice } from '../utils/rating'
-import { Eye, Minus, Plus, ShoppingCart, Store } from 'lucide-react'
+import { Eye, Minus, Plus, ShoppingCart, Store, Trash2 } from 'lucide-react'
+import { Toast } from './Toast'
 import '../css/ProductCard.css'
 
 export function ProductCard({ product, onProductUpdated, onEditProduct, onViewDetails, showManagementActions = false, variant = 'default' }) {
   const { user, userRole } = useAuth()
   const { addToCart } = useCart()
+  const { openConfirmation } = useConfirmation()
   const navigate = useNavigate()
   const [deleting, setDeleting] = useState(false)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [showSellerStore, setShowSellerStore] = useState(false)
   const [buyQuantity, setBuyQuantity] = useState(1)
+  const [toastMessage, setToastMessage] = useState('')
+  const [toastType, setToastType] = useState('success')
 
   const canManage =
     userRole === 'admin' ||
     (showManagementActions && userRole === 'seller' && product?.sellerId && user && product.sellerId === user.uid)
 
   const handleDeleteProduct = async () => {
-    if (!window.confirm('Are you sure you want to delete this product?')) {
-      return
-    }
-
-    try {
-      setDeleting(true)
-      await deleteDoc(doc(db, 'products', product.id))
-      if (onProductUpdated) {
-        onProductUpdated()
+    openConfirmation({
+      title: 'Delete Product',
+      message: 'Are you sure you want to delete this product?',
+      onConfirm: async () => {
+        try {
+          setDeleting(true)
+          await deleteDoc(doc(db, 'products', product.id))
+          if (onProductUpdated) {
+            onProductUpdated()
+          }
+        } catch (err) {
+          console.error('Error deleting product:', err)
+        } finally {
+          setDeleting(false)
+        }
       }
-    } catch (err) {
-      console.error('Error deleting product:', err)
-    } finally {
-      setDeleting(false)
-    }
+    })
   }
 
   const averageRating = calculateAverageRating(product.ratings)
@@ -49,13 +56,15 @@ export function ProductCard({ product, onProductUpdated, onEditProduct, onViewDe
   const handleAddToCart = (e) => {
     e.stopPropagation()
     if (!user) {
-      alert('Please login to add items to cart')
+      setToastMessage('Please login to add items to cart')
+      setToastType('info')
       navigate('/')
       return
     }
 
     if (userRole === 'seller' || userRole === 'admin') {
-      alert('Sellers and admins cannot add items to cart')
+      setToastMessage('Sellers and admins cannot add items to cart')
+      setToastType('info')
       return
     }
 
@@ -64,7 +73,8 @@ export function ProductCard({ product, onProductUpdated, onEditProduct, onViewDe
     }
 
     addToCart(product, buyQuantity)
-    alert(`Added ${product.name} to cart`)
+    setToastMessage(`Added ${product.name} to cart`)
+    setToastType('success')
   }
 
   const isShopVariant = variant === 'shop'
@@ -185,8 +195,37 @@ export function ProductCard({ product, onProductUpdated, onEditProduct, onViewDe
             </div>
           )}
 
-          {canManage && product.stock !== undefined && (
-            <p className="product-stock">Stock: {product.stock}</p>
+          {canManage && (
+            <div className="card-actions card-actions--manage">
+              {product.stock !== undefined && (
+                <p className="product-stock">Stock: {product.stock}</p>
+              )}
+              <div className="manage-buttons">
+                {onEditProduct && (
+                  <button
+                    type="button"
+                    className="btn-edit-product"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onEditProduct(product)
+                    }}
+                  >
+                    Edit
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn-delete-product"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDeleteProduct()
+                  }}
+                  disabled={deleting}
+                >
+                  {deleting ? 'Deleting...' : <><Trash2 size={14} /> Delete</>}
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -204,6 +243,15 @@ export function ProductCard({ product, onProductUpdated, onEditProduct, onViewDe
         storeName={product.storeName || 'Store'}
         onClose={() => setShowSellerStore(false)}
       />
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setToastMessage('')}
+        />
+      )}
     </>
   )
 }

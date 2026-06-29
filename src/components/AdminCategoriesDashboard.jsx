@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useConfirmation } from '../context/ConfirmationContext'
 import { 
   Plus, 
   Trash2, 
@@ -10,9 +11,11 @@ import {
 } from 'lucide-react'
 import { db } from '../services/firebase'
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore'
+import { Toast } from './Toast'
 import '../css/AdminCategoriesDashboard.css'
 
 export default function AdminCategoriesDashboard() {
+  const { openConfirmation } = useConfirmation()
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -24,6 +27,8 @@ export default function AdminCategoriesDashboard() {
     description: '',
     icon: '📦',
   })
+  const [toastMessage, setToastMessage] = useState('')
+  const [toastType, setToastType] = useState('success')
 
   useEffect(() => {
     fetchCategories()
@@ -56,7 +61,8 @@ export default function AdminCategoriesDashboard() {
   const handleAddCategory = async (e) => {
     e.preventDefault()
     if (!formData.name.trim()) {
-      alert('Category name is required')
+      setToastMessage('Category name is required')
+      setToastType('error')
       return
     }
 
@@ -79,17 +85,20 @@ export default function AdminCategoriesDashboard() {
 
       setFormData({ name: '', description: '', icon: '📦' })
       setShowAddModal(false)
-      alert('Category created successfully')
+      setToastMessage('Category created successfully')
+      setToastType('success')
     } catch (err) {
       console.error('Error adding category:', err)
-      alert('Failed to create category: ' + err.message)
+      setToastMessage('Failed to create category: ' + err.message)
+      setToastType('error')
     }
   }
 
   const handleUpdateCategory = async (e) => {
     e.preventDefault()
     if (!formData.name.trim()) {
-      alert('Category name is required')
+      setToastMessage('Category name is required')
+      setToastType('error')
       return
     }
 
@@ -114,26 +123,34 @@ export default function AdminCategoriesDashboard() {
 
       setFormData({ name: '', description: '', icon: '📦' })
       setEditingId(null)
-      alert('Category updated successfully')
+      setToastMessage('Category updated successfully')
+      setToastType('success')
     } catch (err) {
       console.error('Error updating category:', err)
-      alert('Failed to update category: ' + err.message)
+      setToastMessage('Failed to update category: ' + err.message)
+      setToastType('error')
     }
   }
 
   const handleDeleteCategory = async (categoryId) => {
-    if (!window.confirm('Are you sure you want to delete this category?')) return
+    openConfirmation({
+      title: 'Delete Category',
+      message: 'Are you sure you want to delete this category?',
+      onConfirm: async () => {
+        try {
+          const categoryRef = doc(db, 'categories', categoryId)
+          await deleteDoc(categoryRef)
 
-    try {
-      const categoryRef = doc(db, 'categories', categoryId)
-      await deleteDoc(categoryRef)
-
-      setCategories(categories.filter((cat) => cat.id !== categoryId))
-      alert('Category deleted successfully')
-    } catch (err) {
-      console.error('Error deleting category:', err)
-      alert('Failed to delete category: ' + err.message)
-    }
+          setCategories(categories.filter((cat) => cat.id !== categoryId))
+          setToastMessage('Category deleted successfully')
+          setToastType('success')
+        } catch (err) {
+          console.error('Error deleting category:', err)
+          setToastMessage('Failed to delete category: ' + err.message)
+          setToastType('error')
+        }
+      }
+    })
   }
 
   const handleEditClick = (category) => {
@@ -330,6 +347,15 @@ export default function AdminCategoriesDashboard() {
           ))
         )}
       </div>
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setToastMessage('')}
+        />
+      )}
     </div>
   )
 }

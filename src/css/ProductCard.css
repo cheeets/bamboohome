@@ -288,6 +288,66 @@
   font-weight: 500;
 }
 
+.card-actions--manage {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.manage-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-edit-product {
+  flex: 1;
+  height: 34px;
+  background: var(--primary-green);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font-body);
+}
+
+.btn-edit-product:hover {
+  background: var(--primary-green-dark);
+}
+
+.btn-delete-product {
+  flex: 1;
+  height: 34px;
+  background: var(--white);
+  color: var(--danger-color);
+  border: 1.5px solid var(--danger-color);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font-body);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.btn-delete-product:hover:not(:disabled) {
+  background: #FFEBEE;
+  color: #B91C1C;
+  border-color: #B91C1C;
+}
+
+.btn-delete-product:disabled {
+  background: var(--bg-cream);
+  color: var(--text-tertiary);
+  border-color: var(--border-color);
+  cursor: not-allowed;
+}
+
 /* Marketplace / shop variant — Shopee-style card */
 .product-card--shop {
   border-radius: var(--radius-md);

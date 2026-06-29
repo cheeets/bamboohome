@@ -8,7 +8,7 @@ import { LoginModal } from './LoginModal'
 import { SignupModal } from './SignupModal'
 import { ProductModal } from './ProductModal'
 import { Bell, Menu, MessageCircle, Search, ShoppingCart, User, X } from 'lucide-react'
-import greennestLogo from '../images/greennestlogo1-Photoroom.png'
+import bambooHomeLogo from '../images/bamboo-home-logo.png'
 import '../css/Header.css'
 
 export function Header() {
@@ -157,7 +157,7 @@ export function Header() {
       <div className="header-main">
         <div className="header-main-inner">
           <Link to={homeLink} className="header-logo">
-            <img src={greennestLogo} alt="Bamboo Home" className="header-logo-img" />
+            <img src={bambooHomeLogo} alt="Bamboo Home" className="header-logo-img" />
           </Link>
 
           <form className="header-search-form" onSubmit={handleSearchSubmit}>

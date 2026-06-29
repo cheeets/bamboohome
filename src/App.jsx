@@ -2,9 +2,11 @@ import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
+import { ConfirmationProvider, useConfirmation } from './context/ConfirmationContext'
 import { Header } from './components/Header'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { NotificationListener } from './components/NotificationListener'
+import { ConfirmationModal } from './components/ConfirmationModal'
 import { useAuth } from './context/AuthContext'
 import { Home } from './pages/Home'
 import { ShopPage } from './pages/ShopPage'
@@ -16,6 +18,7 @@ import { Chat } from './pages/Chat'
 import { Profile } from './pages/Profile'
 import { SellerDashboard } from './pages/SellerDashboard'
 import './css/App.css'
+import './css/ConfirmationModal.css'
 
 function AppContent() {
   const location = useLocation()
@@ -36,6 +39,7 @@ function AppContent() {
     <>
       {showHeader && <Header />}
       {user && <NotificationListener />}
+      <ConfirmationModal />
       <main className={isHomePage ? 'main-content landing' : 'main-content'}>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -105,7 +109,9 @@ function App() {
     <Router>
       <AuthProvider>
         <CartProvider>
-          <AppContent />
+          <ConfirmationProvider>
+            <AppContent />
+          </ConfirmationProvider>
         </CartProvider>
       </AuthProvider>
     </Router>

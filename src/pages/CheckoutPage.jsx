@@ -221,7 +221,6 @@ export function CheckoutPage() {
 
           transaction.update(ref, {
             stock: currentStock - item.quantity,
-            updatedAt: serverTimestamp(),
           })
         }
 

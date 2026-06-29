@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState } from 'react'
 import { db } from '../services/firebase'
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
@@ -8,12 +8,53 @@ import '../css/Notifications.css'
 export function NotificationListener() {
   const { user } = useAuth()
   const [notifications, setNotifications] = useState([])
-  const [previousOrders, setPreviousOrders] = useState({})
-  const processedNotificationIdsRef = useRef(new Set())
+
+  // Helper functions for localStorage
+  const getStoredData = (key) => {
+    if (!user) return {}
+    try {
+      const stored = localStorage.getItem(`notif_${user.uid}_${key}`)
+      return stored ? JSON.parse(stored) : {}
+    } catch {
+      return {}
+    }
+  }
+
+  const setStoredData = (key, data) => {
+    if (!user) return
+    try {
+      localStorage.setItem(`notif_${user.uid}_${key}`, JSON.stringify(data))
+    } catch {
+      // Ignore storage errors
+    }
+  }
+
+  const getStoredNotificationIds = () => {
+    if (!user) return new Set()
+    try {
+      const stored = localStorage.getItem(`notif_${user.uid}_processedIds`)
+      return stored ? new Set(JSON.parse(stored)) : new Set()
+    } catch {
+      return new Set()
+    }
+  }
+
+  const addStoredNotificationId = (id) => {
+    if (!user) return
+    try {
+      const ids = getStoredNotificationIds()
+      ids.add(id)
+      localStorage.setItem(`notif_${user.uid}_processedIds`, JSON.stringify([...ids]))
+    } catch {
+      // Ignore storage errors
+    }
+  }
 
   // Listen for order status changes
   useEffect(() => {
     if (!user) return
+
+    let previousOrders = getStoredData('orderStatuses')
 
     const q = query(collection(db, 'orders'), where('userId', '==', user.uid))
     
@@ -24,54 +65,53 @@ export function NotificationListener() {
         const currentStatus = (data.status || '').toLowerCase()
         
         // Check if we have a previous status for this order
-        setPreviousOrders(prev => {
-          const previousStatus = prev[orderId]
+        const previousStatus = previousOrders[orderId]
+        
+        // Only show notification if status actually changed
+        if (previousStatus && previousStatus !== currentStatus) {
+          let notification = null
           
-          // Only show notification if status actually changed
-          if (previousStatus && previousStatus !== currentStatus) {
-            let notification = null
-            
-            if (currentStatus === 'processing') {
-              notification = {
-                id: `${orderId}_${Date.now()}`,
-                orderId,
-                type: 'accepted',
-                icon: <Package size={24} />,
-                title: 'Order Accepted!',
-                message: 'Your order has been accepted by the seller and is being prepared.',
-                color: '#22c55e',
-                timestamp: new Date()
-              }
-            } else if (currentStatus === 'delivered') {
-              const deliveryMessage = data.deliveryMessage || 'Your order will be delivered today!'
-              notification = {
-                id: `${orderId}_${Date.now()}`,
-                orderId,
-                type: 'delivery',
-                icon: <Truck size={24} />,
-                title: 'Out for Delivery!',
-                message: deliveryMessage,
-                color: '#3b82f6',
-                timestamp: new Date()
-              }
+          if (currentStatus === 'processing') {
+            notification = {
+              id: `${orderId}_${Date.now()}`,
+              orderId,
+              type: 'accepted',
+              icon: <Package size={24} />,
+              title: 'Order Accepted!',
+              message: 'Your order has been accepted by the seller and is being prepared.',
+              color: '#22c55e',
+              timestamp: new Date()
             }
-            
-            if (notification) {
-              setNotifications(prevNotifs => [notification, ...prevNotifs])
-              
-              // Auto-remove after 10 seconds
-              setTimeout(() => {
-                setNotifications(prevNotifs => prevNotifs.filter(n => n.id !== notification.id))
-              }, 10000)
+          } else if (currentStatus === 'delivered') {
+            const deliveryMessage = data.deliveryMessage || 'Your order will be delivered today!'
+            notification = {
+              id: `${orderId}_${Date.now()}`,
+              orderId,
+              type: 'delivery',
+              icon: <Truck size={24} />,
+              title: 'Out for Delivery!',
+              message: deliveryMessage,
+              color: '#3b82f6',
+              timestamp: new Date()
             }
           }
           
-          // Return updated previous orders
-          return {
-            ...prev,
-            [orderId]: currentStatus
+          if (notification) {
+            setNotifications(prevNotifs => [notification, ...prevNotifs])
+            
+            // Auto-remove after 10 seconds
+            setTimeout(() => {
+              setNotifications(prevNotifs => prevNotifs.filter(n => n.id !== notification.id))
+            }, 10000)
           }
-        })
+        }
+        
+        // Update previous orders
+        previousOrders = {
+          ...previousOrders,
+          [orderId]: currentStatus
+        }
+        setStoredData('orderStatuses', previousOrders)
       })
     })
 
@@ -81,6 +121,8 @@ export function NotificationListener() {
   // Listen for notifications from 'notifications' collection (including seller warnings)
   useEffect(() => {
     if (!user) return
+
+    const processedNotificationIds = getStoredNotificationIds()
 
     const q = query(
       collection(db, 'notifications'),
@@ -95,8 +137,8 @@ export function NotificationListener() {
           const notificationId = change.doc.id
           
           // Only process if we haven't already processed this notification
-          if (!processedNotificationIdsRef.current.has(notificationId)) {
-            processedNotificationIdsRef.current.add(notificationId)
+          if (!processedNotificationIds.has(notificationId)) {
+            addStoredNotificationId(notificationId)
             
             let notification = null
             

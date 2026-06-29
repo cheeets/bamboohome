@@ -6,7 +6,7 @@ import {
   onAuthStateChanged,
 } from 'firebase/auth'
 import { auth, db } from '../services/firebase'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
 
 const AuthContext = createContext()
 
@@ -18,7 +18,50 @@ export function AuthProvider({ children }) {
   const [storePhotoUrl, setStorePhotoUrl] = useState('')
   const [isSuspended, setIsSuspended] = useState(false)
   const [suspensionReason, setSuspensionReason] = useState('')
+  const [suspensionEndAt, setSuspensionEndAt] = useState(null)
   const [loading, setLoading] = useState(true)
+
+  // Check if suspension has expired and auto-unsuspend
+  const checkAndAutoUnsuspend = async (userId, userData) => {
+    if (userData.isSuspended && userData.suspensionEndAt) {
+      const endTime = userData.suspensionEndAt.toDate ? userData.suspensionEndAt.toDate() : new Date(userData.suspensionEndAt)
+      const now = new Date()
+      
+      if (now >= endTime) {
+        try {
+          const userRef = doc(db, 'users', userId)
+          await updateDoc(userRef, {
+            isSuspended: false,
+            suspensionReason: null,
+            suspendedAt: null,
+            suspensionEndAt: null,
+            suspensionDuration: null,
+            suspensionUnit: null,
+            updatedAt: new Date(),
+          })
+          
+          setIsSuspended(false)
+          setSuspensionReason('')
+          setSuspensionEndAt(null)
+          
+          // Send notification
+          const notificationData = {
+            userId,
+            message: 'Your seller account has been automatically unsuspended.',
+            type: 'order_update',
+            isRead: false,
+            createdAt: serverTimestamp(),
+          }
+          await setDoc(doc(db, 'notifications', `${userId}_auto_unsuspend_${Date.now()}`), notificationData)
+          
+          return true
+        } catch (error) {
+          console.error('Error auto-unsuspending user:', error)
+        }
+      }
+    }
+    return false
+  }
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -31,12 +74,19 @@ export function AuthProvider({ children }) {
 
           if (userDocSnap.exists()) {
             const data = userDocSnap.data()
-            setUserRole(data.role?.toLowerCase() || 'user')
-            setUserName(data.name || data.displayName || '')
-            setStoreName(data.storeName || '')
-            setStorePhotoUrl(data.storePhotoUrl || '')
-            setIsSuspended(data.isSuspended || false)
-            setSuspensionReason(data.suspensionReason || '')
+            
+            // Check if suspension has expired
+            const wasAutoUnsuspended = await checkAndAutoUnsuspend(currentUser.uid, data)
+            
+            if (!wasAutoUnsuspended) {
+              setUserRole(data.role?.toLowerCase() || 'user')
+              setUserName(data.name || data.displayName || '')
+              setStoreName(data.storeName || '')
+              setStorePhotoUrl(data.storePhotoUrl || '')
+              setIsSuspended(data.isSuspended || false)
+              setSuspensionReason(data.suspensionReason || '')
+              setSuspensionEndAt(data.suspensionEndAt || null)
+            }
           }
         } else {
           setUser(null)
@@ -46,6 +96,7 @@ export function AuthProvider({ children }) {
           setStorePhotoUrl('')
           setIsSuspended(false)
           setSuspensionReason('')
+          setSuspensionEndAt(null)
         }
       } catch (error) {
         console.error('Error fetching user data:', error)
@@ -56,6 +107,21 @@ export function AuthProvider({ children }) {
 
     return unsubscribe
   }, [])
+
+  // Periodically check suspension status (every minute)
+  useEffect(() => {
+    if (!user || !isSuspended || !suspensionEndAt) return
+
+    const checkInterval = setInterval(async () => {
+      const userDocRef = doc(db, 'users', user.uid)
+      const userDocSnap = await getDoc(userDocRef)
+      if (userDocSnap.exists()) {
+        await checkAndAutoUnsuspend(user.uid, userDocSnap.data())
+      }
+    }, 60000) // Check every minute
+
+    return () => clearInterval(checkInterval)
+  }, [user, isSuspended, suspensionEndAt])
 
   // ✅ UPDATED REGISTER FUNCTION
   const register = async (email, password, name, role = 'user', sellerStoreName = '', sellerStorePhotoUrl = '') => {
@@ -172,6 +238,7 @@ export function AuthProvider({ children }) {
     storePhotoUrl,
     isSuspended,
     suspensionReason,
+    suspensionEndAt,
     loading,
     authLoading: loading,
     register,
