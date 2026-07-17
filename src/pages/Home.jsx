@@ -50,14 +50,6 @@ export function Home() {
               </button>
             </div>
           </div>
-
-          <div className="hero-visual">
-            <img
-              src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=900&auto=format&fit=crop&q=80"
-              alt="Handcrafted bamboo furniture in a modern living space"
-              className="hero-visual-img"
-            />
-          </div>
         </div>
       </section>
 

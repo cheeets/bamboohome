@@ -76,11 +76,17 @@ export default function UserSidebar({ activeView, setActiveView }) {
             <button className={`nav-item ${activeView === 'profile' ? 'active' : ''}`} onClick={() => setActiveView('profile')}>
               <User size={16} /> My Profile
             </button>
-            <button className={`nav-item ${activeView === 'orders' ? 'active' : ''}`} onClick={() => navigate('/orders')}>
+            <button className={`nav-item ${activeView === 'orders' ? 'active' : ''}`} onClick={() => {
+              setActiveView('orders')
+              navigate('/orders')
+            }}>
               <Package size={16} /> My Orders
               {activeOrders > 0 && <span className="notif-badge">{activeOrders}</span>}
             </button>
-            <button className={`nav-item ${activeView === 'messages' ? 'active' : ''}`} onClick={() => navigate('/chat')}>
+            <button className={`nav-item ${activeView === 'messages' ? 'active' : ''}`} onClick={() => {
+              setActiveView('messages')
+              navigate('/chat')
+            }}>
               <MessageCircle size={16} /> Messages
               {unreadMessages > 0 && <span className="notif-badge">{unreadMessages}</span>}
             </button>

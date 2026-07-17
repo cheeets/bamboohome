@@ -13,16 +13,18 @@
 .dashboard-shell-inner {
   max-width: var(--content-max-width);
   margin: 0 auto;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
   gap: 20px;
   align-items: flex-start;
+  width: 100%;
 }
 
 /* Main panel — matches buyer-main-panel */
 .admin-main-content,
 .dashboard-main-panel {
-  flex: 1;
   min-width: 0;
+  width: 100%;
   margin-left: 0 !important;
   background: var(--white);
   border-radius: var(--radius-xl);
@@ -150,7 +152,9 @@
   }
 
   .dashboard-shell-inner {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
 }
 

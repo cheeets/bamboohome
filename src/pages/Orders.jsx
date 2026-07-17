@@ -137,10 +137,11 @@ export function Orders() {
 
   return (
     <div className="admin-dashboard-layout">
-      <UserSidebar activeView={activeView} setActiveView={setActiveView} />
-      
-      <main className="admin-main-content">
-        <div className="admin-page-header">
+      <div className="dashboard-shell-inner">
+        <UserSidebar activeView={activeView} setActiveView={setActiveView} />
+        
+        <main className="admin-main-content">
+          <div className="admin-page-header">
           <div className="header-content">
             <h1>My Orders</h1>
             <p className="header-subtitle">Track and manage your bamboo purchases</p>
@@ -251,6 +252,7 @@ export function Orders() {
           )}
         </div>
       </main>
+      </div>
 
       {/* Cancel Order Confirmation Modal */}
       {showCancelModal && (

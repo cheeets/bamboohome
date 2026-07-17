@@ -82,10 +82,11 @@ export function Profile() {
 
   return (
     <div className="admin-dashboard-layout">
-      <UserSidebar activeView={activeView} setActiveView={setActiveView} />
-      
-      <main className="admin-main-content">
-        <div className="admin-page-header">
+      <div className="dashboard-shell-inner">
+        <UserSidebar activeView={activeView} setActiveView={setActiveView} />
+        
+        <main className="admin-main-content">
+          <div className="admin-page-header">
           <div className="header-content">
             <h1>My Dashboard</h1>
             <p className="header-subtitle">Welcome back, {displayName}!</p>
@@ -180,6 +181,7 @@ export function Profile() {
           )}
         </div>
       </main>
+      </div>
     </div>
   )
 }

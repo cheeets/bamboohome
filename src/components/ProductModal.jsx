@@ -274,193 +274,200 @@ export function ProductModal({ isOpen, category, editingProduct, onClose, onProd
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
 
-        {error && <div className="error-message">{error}</div>}
+        <div className="product-modal-body">
+          {error && <div className="error-message">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="product-form">
-          <div className="form-group">
-            <label htmlFor="productName">Product Name *</label>
-            <input
-              type="text"
-              id="productName"
-              value={productName}
-              onChange={(e) => setProductName(e.target.value)}
-              placeholder="Enter product name"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="price">Price *</label>
-            <input
-              type="number"
-              id="price"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="Enter price"
-              step="0.01"
-              min="0"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="category">Category *</label>
-            {loadingCategories ? (
-              <select id="category" disabled>
-                <option>Loading categories...</option>
-              </select>
-            ) : categories.length === 0 ? (
-              <div style={{ padding: '10px', color: '#d97706', backgroundColor: '#fef3c7', borderRadius: '6px', fontSize: '14px' }}>
-                No categories found. Please ask your admin to create categories first.
-              </div>
-            ) : (
-              <select
-                id="category"
-                value={modalCategory}
-                onChange={(e) => setModalCategory(e.target.value)}
-                required
-              >
-                <option value="">Select a category</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.icon} {cat.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="description">Description</label>
-            <textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Enter product description (optional)"
-              rows="3"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="stock">Stock Quantity *</label>
-            <input
-              type="number"
-              id="stock"
-              value={stock}
-              onChange={(e) => setStock(e.target.value)}
-              placeholder="Enter stock quantity"
-              min="0"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="lowStockThreshold">Low Stock Threshold *</label>
-            <input
-              type="number"
-              id="lowStockThreshold"
-              value={lowStockThreshold}
-              onChange={(e) => setLowStockThreshold(e.target.value)}
-              placeholder="Alert when stock is below this number"
-              min="0"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="image">Product Image {!editingProduct && '*'}</label>
-            <div className="image-upload-container">
-              <div
-                className={`upload-dropzone ${isDragOver ? 'drag-over' : ''}`}
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={(e) => {
-                  e.preventDefault()
-                  setIsDragOver(true)
-                }}
-                onDragLeave={() => setIsDragOver(false)}
-                onDrop={handleImageDrop}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    fileInputRef.current?.click()
-                  }
-                }}
-              >
-                <div className="upload-dropzone-icon">
-                  <UploadCloud size={26} />
-                </div>
-                <p className="upload-dropzone-title">Upload product image</p>
-                <p className="upload-dropzone-text">
-                  Click to choose an image or drag and drop it here
-                </p>
-                <span className="upload-dropzone-hint">PNG, JPG, or WEBP recommended</span>
-              </div>
+          <form id="product-form" onSubmit={handleSubmit} className="product-form">
+            <div className="form-group">
+              <label htmlFor="productName">Product Name *</label>
               <input
-                type="file"
-                id="image"
-                onChange={handleImageChange}
-                accept="image/*"
-                className="file-input"
-                required={!editingProduct}
-                ref={fileInputRef}
+                type="text"
+                id="productName"
+                value={productName}
+                onChange={(e) => setProductName(e.target.value)}
+                placeholder="Enter product name"
+                required
               />
-              <div className="image-preview-wrapper">
-                {imagePreview ? (
-                  <div className="image-preview-card">
-                    <div className="image-preview-header">
-                      <div className="image-preview-title">
-                        <ImagePlus size={16} />
-                        <span>Selected product image</span>
-                      </div>
-                      <button
-                        type="button"
-                        className="btn-remove-image"
-                        onClick={() => {
-                          setImageFile(null)
-                          setImageUrl('')
-                          setImagePreview('')
-                          if (fileInputRef.current) {
-                            fileInputRef.current.value = ''
-                          }
-                        }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <img src={imagePreview} alt="Preview" className="image-preview" />
-                    {imageFile && (
-                      <p className="image-file-name">{imageFile.name}</p>
-                    )}
+            </div>
+
+            <div className="form-row columns-2">
+              <div className="form-group">
+                <label htmlFor="price">Price *</label>
+                <input
+                  type="number"
+                  id="price"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="Enter price"
+                  step="0.01"
+                  min="0"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="category">Category *</label>
+                {loadingCategories ? (
+                  <select id="category" disabled>
+                    <option>Loading categories...</option>
+                  </select>
+                ) : categories.length === 0 ? (
+                  <div className="category-empty-state">
+                    No categories found. Please ask your admin to create categories first.
                   </div>
                 ) : (
-                  <div className="image-placeholder">
-                    <span>No Image Selected</span>
-                  </div>
+                  <select
+                    id="category"
+                    value={modalCategory}
+                    onChange={(e) => setModalCategory(e.target.value)}
+                    required
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.icon} {cat.name}
+                      </option>
+                    ))}
+                  </select>
                 )}
               </div>
             </div>
-            {uploadingImage && <p className="uploading-text">Uploading image...</p>}
-          </div>
 
-          <div className="form-actions">
-            <button
-              type="submit"
-              disabled={loading || uploadingImage}
-              className="btn btn-primary btn-full"
-            >
-              {loading ? 'Saving...' : uploadingImage ? 'Uploading Image...' : editingProduct ? 'Update Product' : 'Add Product'}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn btn-secondary btn-full"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
+            <div className="form-group">
+              <label htmlFor="description">Description</label>
+              <textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Enter product description (optional)"
+                rows="4"
+              />
+            </div>
+
+            <div className="form-row columns-2">
+              <div className="form-group">
+                <label htmlFor="stock">Stock Quantity *</label>
+                <input
+                  type="number"
+                  id="stock"
+                  value={stock}
+                  onChange={(e) => setStock(e.target.value)}
+                  placeholder="Enter stock quantity"
+                  min="0"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="lowStockThreshold">Low Stock Threshold *</label>
+                <input
+                  type="number"
+                  id="lowStockThreshold"
+                  value={lowStockThreshold}
+                  onChange={(e) => setLowStockThreshold(e.target.value)}
+                  placeholder="Alert when stock is below this number"
+                  min="0"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="image">Product Image {!editingProduct && '*'}</label>
+              <div className="image-upload-container">
+                <div
+                  className={`upload-dropzone ${isDragOver ? 'drag-over' : ''}`}
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    setIsDragOver(true)
+                  }}
+                  onDragLeave={() => setIsDragOver(false)}
+                  onDrop={handleImageDrop}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      fileInputRef.current?.click()
+                    }
+                  }}
+                >
+                  <div className="upload-dropzone-icon">
+                    <UploadCloud size={26} />
+                  </div>
+                  <p className="upload-dropzone-title">Upload product image</p>
+                  <p className="upload-dropzone-text">
+                    Click to choose an image or drag and drop it here
+                  </p>
+                  <span className="upload-dropzone-hint">PNG, JPG, or WEBP recommended</span>
+                </div>
+                <input
+                  type="file"
+                  id="image"
+                  onChange={handleImageChange}
+                  accept="image/*"
+                  className="file-input"
+                  required={!editingProduct}
+                  ref={fileInputRef}
+                />
+                <div className="image-preview-wrapper">
+                  {imagePreview ? (
+                    <div className="image-preview-card">
+                      <div className="image-preview-header">
+                        <div className="image-preview-title">
+                          <ImagePlus size={16} />
+                          <span>Selected product image</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-remove-image"
+                          onClick={() => {
+                            setImageFile(null)
+                            setImageUrl('')
+                            setImagePreview('')
+                            if (fileInputRef.current) {
+                              fileInputRef.current.value = ''
+                            }
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <img src={imagePreview} alt="Preview" className="image-preview" />
+                      {imageFile && (
+                        <p className="image-file-name">{imageFile.name}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="image-placeholder">
+                      <span>No Image Selected</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {uploadingImage && <p className="uploading-text">Uploading image...</p>}
+            </div>
+          </form>
+        </div>
+
+        <div className="product-modal-footer">
+          <button
+            type="submit"
+            form="product-form"
+            disabled={loading || uploadingImage}
+            className="btn btn-primary modal-submit"
+          >
+            {loading ? 'Saving...' : uploadingImage ? 'Uploading Image...' : editingProduct ? 'Update Product' : 'Add Product'}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn btn-secondary modal-cancel"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -1,9 +1,6 @@
 .modal-overlay1 {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background-color: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(5px);
   display: flex;
@@ -18,11 +15,12 @@
 .modal-content1 {
   background-color: var(--white);
   border-radius: var(--radius-xl);
-  padding: 0;
-  max-width: 600px;
-  width: 95%;
-  max-height: 90vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  width: min(700px, 100%);
+  max-width: 700px;
+  max-height: 85vh;
+  overflow: hidden;
   box-shadow: var(--shadow-xl);
   animation: slideUp 0.3s ease-out;
   border: 1px solid var(--border-color);
@@ -33,9 +31,19 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px 28px;
+  padding: 18px 20px;
   border-bottom: 1px solid var(--border-color);
   background-color: var(--white);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.product-modal-body {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding: 16px 20px 24px;
 }
 
 .modal-header h2 {
@@ -69,16 +77,19 @@
 }
 
 .product-form {
-  padding: 32px;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+  padding-bottom: 32px;
 }
 
 .form-group {
-  margin-bottom: 24px;
+  margin-bottom: 0;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   font-weight: 600;
   font-size: 13px;
   color: var(--text-primary);
@@ -88,7 +99,7 @@
 .form-group textarea,
 .form-group select {
   width: 100%;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: 14px;
@@ -96,6 +107,15 @@
   color: var(--text-primary);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   font-family: var(--font-body);
+}
+
+.form-row {
+  display: grid;
+  gap: 16px;
+}
+
+.form-row.columns-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .form-group input:focus,
@@ -108,8 +128,7 @@
 
 /* Image Upload Styling */
 .image-upload-container {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 12px;
 }
 
@@ -241,24 +260,58 @@
   background: #fef2f2;
 }
 
-.form-actions {
+.product-modal-footer {
   display: flex;
-  gap: 16px;
-  margin-top: 40px;
+  gap: 12px;
+  padding: 16px 20px 20px;
+  border-top: 1px solid var(--border-color);
+  background: var(--white);
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
 }
 
-.btn-submit {
+.modal-submit,
+.modal-cancel {
   flex: 1;
-  padding: 14px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+.modal-submit,
+.modal-cancel {
+  flex: 1;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+.modal-submit {
   background: var(--primary-green);
   color: var(--white);
-  border: none;
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: var(--font-body);
+}
+
+.modal-submit:hover {
+  background: var(--primary-green-dark);
+}
+
+.modal-cancel {
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.modal-cancel:hover {
+  background: var(--gray-50);
 }
 
 .btn-submit:hover {
@@ -285,46 +338,42 @@
   background-color: var(--gray-50);
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
   .modal-content1 {
     width: 95%;
     max-height: 95vh;
     border-radius: 16px;
   }
 
+  .product-form {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .form-row.columns-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions {
+    padding: 14px 16px 16px;
+  }
+
   .modal-header {
-    padding: 15px;
+    padding: 16px;
   }
 
   .modal-header h2 {
     font-size: 18px;
   }
 
-  .product-form {
-    padding: 15px;
-  }
-
-  .product-form .form-group {
-    margin-bottom: 15px;
-  }
-
-  .product-form label {
+  .form-group label {
     font-size: 13px;
   }
 
-  .product-form input,
-  .product-form textarea,
-  .product-form select {
-    padding: 10px;
-    font-size: 13px;
-  }
-
-  .form-actions {
-    margin-top: 20px;
-  }
-
-  .btn {
-    padding: 10px 15px;
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    padding: 10px 12px;
     font-size: 13px;
   }
 

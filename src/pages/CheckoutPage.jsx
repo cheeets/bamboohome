@@ -81,6 +81,7 @@ export function CheckoutPage() {
     phoneNumber: '',
     addressLine: '',
     notes: '',
+    paymentMethod: 'Cash On Delivery',
   })
 
   // Calculate price differences
@@ -254,7 +255,7 @@ export function CheckoutPage() {
               addressLine: formData.addressLine.trim(),
               notes: (formData.notes || '').trim(),
             },
-            paymentMethod: 'COD',
+            paymentMethod: formData.paymentMethod,
             status: 'Pending',
             createdAt: serverTimestamp(),
           }
@@ -455,6 +456,21 @@ export function CheckoutPage() {
                       rows="2"
                     ></textarea>
                   </div>
+                  <div className="form-group">
+                    <label>Mode of Payment</label>
+                    <div className="payment-method-group">
+                      <label className="payment-option">
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="Cash On Delivery"
+                          checked={formData.paymentMethod === 'Cash On Delivery'}
+                          onChange={handleInputChange}
+                        />
+                        Cash On Delivery
+                      </label>
+                    </div>
+                  </div>
                 </section>
               </div>
 
@@ -479,8 +495,8 @@ export function CheckoutPage() {
                     <span>{formatPrice(getTotalPrice())}</span>
                   </div>
                   <div className="summary-item">
-                    <span>Delivery Fee</span>
-                    <span>{formatPrice(0)}</span>
+                    <span>Mode of Payment</span>
+                    <span>Cash On Delivery</span>
                   </div>
 
                   <div className="summary-total">

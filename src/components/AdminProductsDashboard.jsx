@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { useConfirmation } from '../context/ConfirmationContext'
-import { 
-  Trash2, 
+import {  
+  Trash2,
   Edit, 
   Package, 
   Search, 
@@ -13,7 +12,6 @@ import { formatPrice } from '../utils/rating'
 import '../css/AdminProductsDashboard.css'
 
 export default function AdminProductsDashboard({ allProducts, onDeleteProduct, onUpdateStock, onEditProduct }) {
-  const { openConfirmation } = useConfirmation()
   const [search, setSearch] = useState('')
   const [sellerFilter, setSellerFilter] = useState('all')
   const [categories, setCategories] = useState([])
@@ -183,15 +181,9 @@ export default function AdminProductsDashboard({ allProducts, onDeleteProduct, o
                         <button className="icon-btn edit" onClick={() => onEditProduct(product.id, product)} title="Edit Details">
                           <Edit size={16} />
                         </button>
-                        <button className="icon-btn delete" onClick={() => {
-            openConfirmation({
-              title: 'Remove Product',
-              message: `Permanently remove ${product.name} from catalog?`,
-              onConfirm: () => onDeleteProduct(product.id)
-            })
-          }} title="Remove Product">
-            <Trash2 size={16} />
-          </button>
+                        <button className="icon-btn delete" onClick={() => onDeleteProduct(product.id)} title="Remove Product">
+                      <Trash2 size={16} />
+                    </button>
                       </div>
                     </td>
                   </tr>
