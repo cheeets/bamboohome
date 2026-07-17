@@ -44,8 +44,10 @@ service cloud.firestore {
             && !('suspensionEndAt' in request.resource.data)
             && !('suspensionDuration' in request.resource.data)
             && !('suspensionUnit' in request.resource.data))
-        // Allow any signed-in user to update storeRatings (for testing, no key check)
-        || (isSignedIn() && request.auth.uid != userId);
+        // Allow only buyers (user role) to update storeRatings
+        || (isUser()
+            && request.auth.uid != userId
+            && ('storeRatings' in request.resource.data));
       allow delete: if isAdmin();
     }
 
