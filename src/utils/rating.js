@@ -10,6 +10,16 @@ import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore'
  */
 export const rateStore = async (sellerId, userId, rating) => {
   try {
+    // Validate rating is between 1 and 5
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      throw new Error('Rating must be between 1 and 5.')
+    }
+
+    // Prevent rating own store
+    if (sellerId === userId) {
+      throw new Error('You cannot rate your own store.')
+    }
+
     const sellerRef = doc(db, 'users', sellerId)
 
     // Check if user already rated

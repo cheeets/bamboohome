@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "bamboo-home",
     "public": "dist",
     "ignore": [
       "firebase.json",

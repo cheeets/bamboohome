@@ -11,7 +11,7 @@ import { Toast } from './Toast'
 import '../css/SellerStoreModal.css'
 
 export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, onClose }) {
-  const { user } = useAuth()
+  const { user, userRole } = useAuth()
   const { addToCart } = useCart()
   const navigate = useNavigate()
   const [sellerProducts, setSellerProducts] = useState([])
@@ -74,6 +74,20 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
     if (!user) {
       setToastMessage('Please login to rate this store')
       setToastType('info')
+      return
+    }
+
+    // Only buyers can rate stores
+    if (userRole !== 'user') {
+      setToastMessage('Only buyers can rate stores')
+      setToastType('error')
+      return
+    }
+
+    // Prevent rating own store
+    if (user.uid === sellerId) {
+      setToastMessage('You cannot rate your own store')
+      setToastType('error')
       return
     }
 
@@ -233,20 +247,22 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
                 </div>
               </div>
               <div className="shopee-store-actions">
-                <div className="shopee-rating-input">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      className={`shopee-star-btn ${star <= (hoverRating || userRating) ? 'filled' : ''}`}
-                      onMouseEnter={() => setHoverRating(star)}
-                      onMouseLeave={() => setHoverRating(0)}
-                      onClick={() => handleRateStore(star)}
-                      disabled={submittingRating}
-                    >
-                      ★
-                    </button>
-                  ))}
-                </div>
+                {userRole === 'user' && (
+                  <div className="shopee-rating-input">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        className={`shopee-star-btn ${star <= (hoverRating || userRating) ? 'filled' : ''}`}
+                        onMouseEnter={() => setHoverRating(star)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        onClick={() => handleRateStore(star)}
+                        disabled={submittingRating}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <button
                   className="shopee-message-btn"
                   onClick={() => {

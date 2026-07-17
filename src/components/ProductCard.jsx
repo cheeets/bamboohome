@@ -121,7 +121,7 @@ export function ProductCard({ product, onProductUpdated, onEditProduct, onViewDe
             )}
           </div>
 
-          {!canManage && isShopVariant && (
+          {!canManage && isShopVariant && userRole === 'user' && (
             <div className="card-actions card-actions--shop">
               <button
                 type="button"
@@ -145,7 +145,7 @@ export function ProductCard({ product, onProductUpdated, onEditProduct, onViewDe
             </div>
           )}
 
-          {!canManage && !isShopVariant && (
+          {!canManage && !isShopVariant && userRole === 'user' && (
             <div className="card-actions">
               <div className="quick-cart-row">
                 <div className="qty-selector" onClick={(e) => e.stopPropagation()}>
