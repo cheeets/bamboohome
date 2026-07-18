@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../services/firebase'
-import { collection, getDocs, query, where, onSnapshot, doc, getDoc, updateDoc, orderBy } from 'firebase/firestore'
+import { collection, getDocs, query, where, onSnapshot, doc, getDoc, updateDoc, deleteDoc, orderBy } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 import { ProductCard } from '../components/ProductCard'
 import { ProductModal } from '../components/ProductModal'
@@ -20,12 +20,15 @@ import {
   Filler,
 } from 'chart.js'
 import { notifyOrderStatusChange } from '../services/notificationService'
+import { generateSalesInsights } from '../services/aiService'
 import { calculateAverageRating, getStockStatus, formatPrice } from '../utils/rating'
-import { AlertTriangle, BarChart3, MessageCircle, Package, Plus, ShoppingBag, Truck } from 'lucide-react'
+import { AlertTriangle, BarChart3, MessageCircle, Package, Plus, ShoppingBag, Truck, X } from 'lucide-react'
 import { Toast } from '../components/Toast'
+import SellerSupportChatbot from '../components/SellerSupportChatbot'
 import '../css/BuyerLayout.css'
 import '../css/ShopPage.css'
 import '../css/SellerDashboard.css'
+import '../css/SellerSupportChatbot.css'
 import '../css/AdminDashboardLayout.css'
 import '../css/DashboardTheme.css'
 import '../css/Messaging.css'
@@ -43,7 +46,7 @@ ChartJS.register(
 
 export function SellerDashboard() {
   const navigate = useNavigate()
-  const { user, userRole, isSuspended, suspensionReason, suspensionEndAt, logout } = useAuth()
+  const { user, userRole, storeName, isSuspended, suspensionReason, suspensionEndAt, logout } = useAuth()
 
   const [countdown, setCountdown] = useState('')
   
@@ -90,6 +93,9 @@ export function SellerDashboard() {
   const [showProductModal, setShowProductModal] = useState(false)
   const [modalCategory, setModalCategory] = useState('')
   const [editingProduct, setEditingProduct] = useState(null)
+  const [aiInsights, setAiInsights] = useState('')
+  const [isGeneratingInsights, setIsGeneratingInsights] = useState(false)
+  const [aiInsightsError, setAiInsightsError] = useState('')
   const [ordersWithDetails, setOrdersWithDetails] = useState([])
   const [loadingOrderDetails, setLoadingOrderDetails] = useState(false)
 
@@ -314,6 +320,7 @@ export function SellerDashboard() {
   const handleCloseDetails = () => {
     // Order details removed
   }
+
 
   const normalizeOrderStatus = (status = '') => status.toString().trim().toLowerCase()
 
@@ -673,6 +680,43 @@ export function SellerDashboard() {
     }
   }
 
+  const handleGenerateInsights = async () => {
+    try {
+      setIsGeneratingInsights(true)
+      setAiInsightsError('')
+
+      const aiProducts = products.map((product) => ({
+        name: product.name,
+        sold: Number(salesByProduct[product.name] || 0),
+        stock: Number(product.stock || 0),
+        price: Number(product.price || 0),
+        category: product.category || 'Unknown',
+      }))
+
+      const response = await generateSalesInsights(aiProducts)
+      const insightText = typeof response === 'string' ? response : response?.reply || ''
+
+      if (!insightText) {
+        throw new Error('The AI service returned no insights.')
+      }
+
+      setAiInsights(insightText)
+    } catch (err) {
+      console.error('Error generating AI insights:', err)
+      setAiInsightsError(err.message || 'Unable to generate AI insights right now.')
+    } finally {
+      setIsGeneratingInsights(false)
+    }
+  }
+
+  const deleteNotification = async (notificationId) => {
+    try {
+      await deleteDoc(doc(db, 'notifications', notificationId))
+    } catch (err) {
+      console.error('Error deleting notification:', err)
+    }
+  }
+
   const canManage = useMemo(() => userRole === 'seller', [userRole])
 
   // Filter pending orders
@@ -796,74 +840,37 @@ export function SellerDashboard() {
   return (
     <>
       {isSuspended ? (
-        <div className="admin-dashboard-layout">
-          <div className="dashboard-shell-inner">
-            <main className="admin-main-content dashboard-main-panel">
-              <div className="admin-page-header">
-                <div className="header-content">
-                  <h1>Account Suspended</h1>
-                  <p className="header-subtitle">Your seller account has been suspended.</p>
-                </div>
-              </div>
-              <div className="admin-content-area" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 200px)' }}>
-                <div style={{ 
-                  textAlign: 'center', 
-                  padding: '60px 40px', 
-                  background: '#fff', 
-                  borderRadius: '16px', 
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-                  maxWidth: '500px',
-                  width: '100%'
-                }}>
-                  <AlertTriangle size={80} style={{ color: '#EF4444', marginBottom: '24px' }} />
-                  <h2 style={{ 
-                    fontSize: '28px',
-                    fontWeight: '700',
-                    color: '#1f2937', 
-                    marginBottom: '16px'
-                  }}>Your Account is Suspended</h2>
-                  <p style={{ 
-                    color: '#4b5563', 
-                    fontSize: '16px', 
-                    lineHeight: '1.6',
-                    marginBottom: '24px'
-                  }}>
+        <div className="suspended-seller-page">
+          <div className="suspended-seller-container">
+            <div className="suspended-seller-grid">
+              <section className="suspended-seller-details-card">
+                <div className="suspended-seller-details-content">
+                  <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#1f2937', marginBottom: '16px' }}>Your Account is Suspended</h1>
+                  <p style={{ color: '#4b5563', fontSize: '16px', lineHeight: 1.6, marginBottom: '24px' }}>
                     {suspensionReason || 'Your seller account has been suspended due to a violation of our platform guidelines.'}
                   </p>
                   {countdown && countdown !== 'Expired' && (
-                    <div style={{ 
-                      background: '#FEF3C7', 
+                    <div style={{
+                      background: '#FEF3C7',
                       border: '1px solid #FCD34D',
                       borderRadius: '12px',
                       padding: '20px',
                       marginBottom: '24px',
                       textAlign: 'center'
                     }}>
-                      <p style={{ 
-                        fontSize: '14px', 
-                        color: '#92400E', 
-                        marginBottom: '8px',
-                        fontWeight: '500'
-                      }}>
+                      <p style={{ fontSize: '14px', color: '#92400E', marginBottom: '8px', fontWeight: 500 }}>
                         Time Remaining Until Auto-Unsuspend:
                       </p>
-                      <p style={{ 
-                        fontSize: '24px', 
-                        fontWeight: '700', 
-                        color: '#B45309',
-                        margin: 0
-                      }}>
+                      <p style={{ fontSize: '24px', fontWeight: 700, color: '#B45309', margin: 0 }}>
                         {countdown}
                       </p>
                     </div>
                   )}
-                  <p style={{ 
-                    color: '#6b7280', 
-                    fontSize: '14px', 
-                    marginBottom: '32px'
-                  }}>
+                  <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '32px' }}>
                     If you believe this is a mistake, please contact our support team for assistance.
                   </p>
+                </div>
+                <div className="suspended-seller-actions">
                   <button
                     onClick={async () => {
                       try {
@@ -879,24 +886,28 @@ export function SellerDashboard() {
                       border: 'none',
                       padding: '14px 32px',
                       fontSize: '16px',
-                      fontWeight: '600',
+                      fontWeight: 600,
                       borderRadius: '8px',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease',
                       width: '100%'
                     }}
-                    onMouseEnter={(e) => {
-                      e.target.style.background = '#DC2626'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.background = '#EF4444'
-                    }}
+                    onMouseEnter={(e) => { e.target.style.background = '#DC2626' }}
+                    onMouseLeave={(e) => { e.target.style.background = '#EF4444' }}
                   >
                     Log Out
                   </button>
                 </div>
-              </div>
-            </main>
+              </section>
+              <section className="suspended-seller-chat-card">
+                <SellerSupportChatbot
+                  isSuspended={true}
+                  suspensionReason={suspensionReason}
+                  suspensionTimeRemaining={countdown}
+                  sellerName={user?.displayName || ''}
+                />
+              </section>
+            </div>
           </div>
         </div>
       ) : (
@@ -916,6 +927,9 @@ export function SellerDashboard() {
                     {activeView === 'analytics' && 'Sales Performance & Insights'}
                     {activeView === 'orders' && 'Order Management'}
                     {activeView === 'products' && 'Product Inventory'}
+                    {activeView === 'notifications' && 'Alerts and updates from GreenNest'}
+                    {activeView === 'messages' && 'Buyer messaging and chat management'}
+                    {activeView === 'ai-support' && 'Ask questions about products, orders, inventory, analytics, and seller responsibilities.'}
                   </p>
                 </div>
                 <div className="header-stats">
@@ -1227,6 +1241,83 @@ export function SellerDashboard() {
                           </div>
                         </div>
                       )}
+
+                      <div style={{
+                        background: '#fff',
+                        border: '1px solid #E8ECE9',
+                        borderRadius: '16px',
+                        padding: '24px',
+                        marginTop: '24px',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                          <div>
+                            <h3 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 700, color: '#1A1A1A' }}>
+                              AI Sales Advisor
+                            </h3>
+                            <p style={{ margin: 0, color: '#5F6368', fontSize: '14px' }}>
+                              Get AI-powered suggestions based on your current sales and inventory data.
+                            </p>
+                          </div>
+                          <button
+                            onClick={handleGenerateInsights}
+                            disabled={isGeneratingInsights}
+                            style={{
+                              background: isGeneratingInsights ? '#9CA3AF' : '#2E7D32',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '999px',
+                              padding: '10px 16px',
+                              fontSize: '14px',
+                              fontWeight: 700,
+                              cursor: isGeneratingInsights ? 'not-allowed' : 'pointer',
+                              transition: 'background 0.2s ease'
+                            }}
+                          >
+                            {isGeneratingInsights ? 'Generating...' : 'Generate AI Insights'}
+                          </button>
+                        </div>
+
+                        {aiInsightsError && (
+                          <div style={{
+                            background: '#FEF2F2',
+                            border: '1px solid #FECACA',
+                            borderRadius: '12px',
+                            padding: '12px 14px',
+                            color: '#B91C1C',
+                            fontSize: '14px',
+                            marginBottom: '12px'
+                          }}>
+                            {aiInsightsError}
+                          </div>
+                        )}
+
+                        {aiInsights ? (
+                          <div style={{
+                            background: 'linear-gradient(135deg, rgba(46, 125, 50, 0.08) 0%, rgba(67, 160, 71, 0.12) 100%)',
+                            border: '1px solid rgba(46, 125, 50, 0.16)',
+                            borderRadius: '14px',
+                            padding: '18px',
+                            color: '#1F2937',
+                            lineHeight: 1.7,
+                            whiteSpace: 'pre-wrap',
+                            fontSize: '14px'
+                          }}>
+                            {aiInsights}
+                          </div>
+                        ) : (
+                          <div style={{
+                            background: '#F8FAF8',
+                            border: '1px dashed #D1D5DB',
+                            borderRadius: '14px',
+                            padding: '18px',
+                            color: '#5F6368',
+                            fontSize: '14px'
+                          }}>
+                            Click the button to generate AI-powered recommendations for restocking, promotions, and product priorities.
+                          </div>
+                        )}
+                      </div>
                     </section>
                   </div>
                 )}
@@ -1532,7 +1623,7 @@ export function SellerDashboard() {
                           {notifications.map((notif) => (
                             <div
                               key={notif.id}
-                              className={`notification-card ${!notif.isRead ? 'unread' : ''}`}
+                              className={`seller-notification-card notification-card ${!notif.isRead ? 'unread' : ''}`}
                               style={{
                                 cursor: 'pointer',
                                 borderLeftColor: notif.type === 'seller_warning' ? '#F59E0B' : '#43A047'
@@ -1559,6 +1650,17 @@ export function SellerDashboard() {
                                   </span>
                                 )}
                               </div>
+                              <button
+                                type="button"
+                                className="seller-notification-delete-btn"
+                                aria-label="Delete notification"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  deleteNotification(notif.id)
+                                }}
+                              >
+                                <X size={16} />
+                              </button>
                             </div>
                           ))}
                         </div>
@@ -1570,6 +1672,18 @@ export function SellerDashboard() {
                 {activeView === 'messages' && (
                   <div className="seller-dashboard-container" style={{ padding: '32px', background: 'transparent', minHeight: 'calc(100vh - 140px)' }}>
                     <Chat />
+                  </div>
+                )}
+
+                {activeView === 'ai-support' && (
+                  <div className="seller-dashboard-container" style={{ padding: '32px', background: 'transparent', minHeight: 'calc(100vh - 140px)' }}>
+                    <SellerSupportChatbot
+                      isSuspended={false}
+                      suspensionReason=""
+                      suspensionTimeRemaining=""
+                      sellerName={user?.displayName || ''}
+                      storeName={storeName || ''}
+                    />
                   </div>
                 )}
               </div>
