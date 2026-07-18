@@ -20,5 +20,18 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
     "vite": "^5.0.8"
-  }
+  },
+  "description": "A modern web application where students can browse products, add them to a cart, and place orders. Features role-based access for students, sellers, and admins.",
+  "main": "vite.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cheeets/bamboohome.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/cheeets/bamboohome/issues"
+  },
+  "homepage": "https://github.com/cheeets/bamboohome#readme"
 }

@@ -38,12 +38,24 @@ service cloud.firestore {
             && request.resource.data.name is string
             && !('deleted' in request.resource.data)
             && !('deletedAt' in request.resource.data)
-            && !('isSuspended' in request.resource.data)
-            && !('suspensionReason' in request.resource.data)
-            && !('suspendedAt' in request.resource.data)
-            && !('suspensionEndAt' in request.resource.data)
-            && !('suspensionDuration' in request.resource.data)
-            && !('suspensionUnit' in request.resource.data))
+            && (
+              (
+                !('isSuspended' in request.resource.data)
+                && !('suspensionReason' in request.resource.data)
+                && !('suspendedAt' in request.resource.data)
+                && !('suspensionEndAt' in request.resource.data)
+                && !('suspensionDuration' in request.resource.data)
+                && !('suspensionUnit' in request.resource.data)
+              )
+              || (
+                request.resource.data.isSuspended == false
+                && request.resource.data.suspensionReason == null
+                && request.resource.data.suspendedAt == null
+                && request.resource.data.suspensionEndAt == null
+                && request.resource.data.suspensionDuration == null
+                && request.resource.data.suspensionUnit == null
+              )
+            ))
         // Allow only buyers (user role) to update storeRatings
         || (isUser()
             && request.auth.uid != userId
@@ -111,7 +123,8 @@ service cloud.firestore {
         && request.auth.uid == resource.data.userId
         && request.resource.data.userId == resource.data.userId
         && request.resource.data.isRead == true;
-      allow delete: if false;
+      allow delete: if isSignedIn()
+        && (request.auth.uid == resource.data.userId || isAdmin());
     }
   }
 }

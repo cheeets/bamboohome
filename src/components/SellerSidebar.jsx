@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { db } from '../services/firebase'
 import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
-import { AlertTriangle, BarChart3, LogOut, Menu, MessageCircle, Package, ShoppingBag, ShoppingCart, Store, User } from 'lucide-react'
+import { AlertTriangle, BarChart3, Bot, LogOut, Menu, MessageCircle, Package, ShoppingBag, ShoppingCart, Store, User } from 'lucide-react'
 import '../css/AdminSidebar.css'
 
 export default function SellerSidebar({ activeView, setActiveView }) {
@@ -118,6 +118,9 @@ export default function SellerSidebar({ activeView, setActiveView }) {
             <button className={`nav-item ${activeView === 'messages' ? 'active' : ''}`} onClick={() => { setActiveView('messages'); window.scrollTo(0, 0) }}>
               <MessageCircle size={16} /> Messages
               {unreadMessages > 0 && <span className="notif-badge">{unreadMessages}</span>}
+            </button>
+            <button className={`nav-item ${activeView === 'ai-support' ? 'active' : ''}`} onClick={() => { setActiveView('ai-support'); window.scrollTo(0, 0) }}>
+              <Bot size={16} /> AI Support
             </button>
           </div>
         </nav>

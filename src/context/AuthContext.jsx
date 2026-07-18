@@ -21,13 +21,28 @@ export function AuthProvider({ children }) {
   const [suspensionEndAt, setSuspensionEndAt] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  const getSuspensionEndTime = (value) => {
+    if (!value) return null
+
+    if (typeof value?.toDate === 'function') {
+      return value.toDate()
+    }
+
+    if (value instanceof Date) {
+      return value
+    }
+
+    const parsedDate = new Date(value)
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate
+  }
+
   // Check if suspension has expired and auto-unsuspend
   const checkAndAutoUnsuspend = async (userId, userData) => {
-    if (userData.isSuspended && userData.suspensionEndAt) {
-      const endTime = userData.suspensionEndAt.toDate ? userData.suspensionEndAt.toDate() : new Date(userData.suspensionEndAt)
+    if (userData?.isSuspended && userData?.suspensionEndAt) {
+      const endTime = getSuspensionEndTime(userData.suspensionEndAt)
       const now = new Date()
-      
-      if (now >= endTime) {
+
+      if (endTime && now >= endTime) {
         try {
           const userRef = doc(db, 'users', userId)
           await updateDoc(userRef, {
@@ -39,11 +54,11 @@ export function AuthProvider({ children }) {
             suspensionUnit: null,
             updatedAt: new Date(),
           })
-          
+
           setIsSuspended(false)
           setSuspensionReason('')
           setSuspensionEndAt(null)
-          
+
           // Send notification
           const notificationData = {
             userId,
@@ -53,7 +68,7 @@ export function AuthProvider({ children }) {
             createdAt: serverTimestamp(),
           }
           await setDoc(doc(db, 'notifications', `${userId}_auto_unsuspend_${Date.now()}`), notificationData)
-          
+
           return true
         } catch (error) {
           console.error('Error auto-unsuspending user:', error)
@@ -108,7 +123,7 @@ export function AuthProvider({ children }) {
     return unsubscribe
   }, [])
 
-  // Periodically check suspension status (every minute)
+  // Keep checking the suspension deadline so the account is unsuspended as soon as it expires.
   useEffect(() => {
     if (!user || !isSuspended || !suspensionEndAt) return
 
@@ -118,7 +133,7 @@ export function AuthProvider({ children }) {
       if (userDocSnap.exists()) {
         await checkAndAutoUnsuspend(user.uid, userDocSnap.data())
       }
-    }, 60000) // Check every minute
+    }, 1000)
 
     return () => clearInterval(checkInterval)
   }, [user, isSuspended, suspensionEndAt])

@@ -2,6 +2,9 @@
 
 # dependencies
 /node_modules
+/functions/node_modules
+/backend/node_modules
+.firebase
 /.pnp
 .pnp.*
 .yarn/*

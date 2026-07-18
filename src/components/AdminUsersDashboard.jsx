@@ -34,8 +34,8 @@ export default function AdminUsersDashboard({
 }) {
   const { openConfirmation } = useConfirmation()
   const [suspensionReason, setSuspensionReason] = useState('')
-  const [suspensionDuration, setSuspensionDuration] = useState(1)
-  const [suspensionUnit, setSuspensionUnit] = useState('days')
+  const [suspensionDuration, setSuspensionDuration] = useState(0)
+  const [suspensionUnit, setSuspensionUnit] = useState('hours')
   const [showSuspensionModal, setShowSuspensionModal] = useState(null)
   const [showUserDetails, setShowUserDetails] = useState(false)
   const [selectedUser, setSelectedUser] = useState(null)
@@ -214,6 +214,8 @@ export default function AdminUsersDashboard({
               console.log('🎯 Suspend button clicked for user:', user.email, user.id)
               setShowSuspensionModal(user)
               setSuspensionReason('')
+              setSuspensionDuration(0)
+              setSuspensionUnit('hours')
             }} title="Suspend Seller">
               <Ban size={16} />
             </button>
@@ -400,14 +402,19 @@ export default function AdminUsersDashboard({
               <div className="modal-section">
                 <h3><AlertCircle size={18} /> Suspension Duration</h3>
                 <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
-                  Set how long the seller will be suspended. After this time, the account will be automatically unsuspended.
+                  Enter the number of minutes, hours, or days for the suspension. After this time, the account will be automatically unsuspended.
                 </p>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                   <input
                     type="number"
-                    min="1"
+                    min="0"
+                    step="1"
+                    placeholder="0"
                     value={suspensionDuration}
-                    onChange={(e) => setSuspensionDuration(Math.max(1, parseInt(e.target.value) || 1))}
+                    onChange={(e) => {
+                      const nextValue = parseInt(e.target.value, 10)
+                      setSuspensionDuration(Number.isNaN(nextValue) ? 0 : Math.max(0, nextValue))
+                    }}
                     style={{
                       width: '120px',
                       padding: '12px',
@@ -427,6 +434,7 @@ export default function AdminUsersDashboard({
                       fontSize: '14px'
                     }}
                   >
+                    <option value="minutes">Minutes</option>
                     <option value="hours">Hours</option>
                     <option value="days">Days</option>
                   </select>
@@ -437,6 +445,10 @@ export default function AdminUsersDashboard({
             <div className="modal-footer">
               <button className="btn-secondary" onClick={() => setShowSuspensionModal(null)}>Cancel</button>
               <button className="btn-danger" onClick={() => {
+                if (suspensionDuration <= 0) {
+                  return
+                }
+
                 console.log('✅ Confirm Suspension clicked:', { 
                   userId: showSuspensionModal.id, 
                   reason: suspensionReason,

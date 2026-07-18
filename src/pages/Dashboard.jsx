@@ -215,7 +215,9 @@ export function AdminOrdersDashboard() {
       // Calculate suspension end time
       const now = new Date()
       const suspensionEndAt = new Date(now)
-      if (unit === 'hours') {
+      if (unit === 'minutes') {
+        suspensionEndAt.setMinutes(now.getMinutes() + duration)
+      } else if (unit === 'hours') {
         suspensionEndAt.setHours(now.getHours() + duration)
       } else if (unit === 'days') {
         suspensionEndAt.setDate(now.getDate() + duration)
@@ -280,6 +282,9 @@ export function AdminOrdersDashboard() {
         isSuspended: false,
         suspensionReason: null,
         suspendedAt: null,
+        suspensionEndAt: null,
+        suspensionDuration: null,
+        suspensionUnit: null,
         updatedAt: new Date(),
       })
 
@@ -289,7 +294,10 @@ export function AdminOrdersDashboard() {
             ...user,
             isSuspended: false,
             suspensionReason: null,
-            suspendedAt: null
+            suspendedAt: null,
+            suspensionEndAt: null,
+            suspensionDuration: null,
+            suspensionUnit: null
           } : user
         )
       )
