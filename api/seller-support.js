@@ -1,20 +1,8 @@
 import Groq from "groq-sdk";
 
-const allowedOrigins = [
-  'https://bamboo-home.web.app',
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175'
-];
-
 export default async function handler(req, res) {
-  const origin = req.headers.origin;
-  
-  // Set CORS headers
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  // Set CORS headers to allow all origins for testing
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
