@@ -1,0 +1,20 @@
+{
+  "name": "bamboo-home-backend",
+  "version": "1.0.0",
+  "description": "Backend API for the Bamboo Home AI support assistant",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "groq-sdk": "^1.3.0"
+  }
+}
