@@ -24,7 +24,6 @@ import { generateSalesInsights } from '../services/aiService'
 import { calculateAverageRating, getStockStatus, formatPrice } from '../utils/rating'
 import { AlertTriangle, BarChart3, MessageCircle, Package, Plus, ShoppingBag, Truck, X } from 'lucide-react'
 import { Toast } from '../components/Toast'
-import SellerSupportChatbot from '../components/SellerSupportChatbot'
 import '../css/BuyerLayout.css'
 import '../css/ShopPage.css'
 import '../css/SellerDashboard.css'
@@ -899,14 +898,6 @@ export function SellerDashboard() {
                   </button>
                 </div>
               </section>
-              <section className="suspended-seller-chat-card">
-                <SellerSupportChatbot
-                  isSuspended={true}
-                  suspensionReason={suspensionReason}
-                  suspensionTimeRemaining={countdown}
-                  sellerName={user?.displayName || ''}
-                />
-              </section>
             </div>
           </div>
         </div>
@@ -1675,17 +1666,7 @@ export function SellerDashboard() {
                   </div>
                 )}
 
-                {activeView === 'ai-support' && (
-                  <div className="seller-dashboard-container" style={{ padding: '32px', background: 'transparent', minHeight: 'calc(100vh - 140px)' }}>
-                    <SellerSupportChatbot
-                      isSuspended={false}
-                      suspensionReason=""
-                      suspensionTimeRemaining=""
-                      sellerName={user?.displayName || ''}
-                      storeName={storeName || ''}
-                    />
-                  </div>
-                )}
+
               </div>
             </main>
           </div>

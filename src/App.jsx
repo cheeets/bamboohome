@@ -8,6 +8,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { NotificationListener } from './components/NotificationListener'
 import { ConfirmationModal } from './components/ConfirmationModal'
 import { useAuth } from './context/AuthContext'
+import AISupportChatbot from './components/AISupportChatbot'
 import { Home } from './pages/Home'
 import { ShopPage } from './pages/ShopPage'
 import { CartPage } from './pages/CartPage'
@@ -100,6 +101,14 @@ function AppContent() {
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>
+      <AISupportChatbot 
+        userRole={userRole}
+        isSuspended={isSuspended}
+        suspensionReason={user?.suspensionReason || ''}
+        sellerName={user?.displayName || ''}
+        storeName={user?.storeName || ''}
+        userName={user?.displayName || ''}
+      />
     </>
   )
 }

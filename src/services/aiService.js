@@ -1,5 +1,37 @@
 const API_URL = import.meta.env.VITE_API_URL || "";
 
+export async function askBuyerSupport({
+  message,
+  userName = '',
+  history = [],
+}) {
+  const cleanMessage = message?.trim();
+
+  if (!cleanMessage) {
+    throw new Error('Please enter a message.');
+  }
+
+  const response = await fetch(`${API_URL}/api/buyer-support`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message: cleanMessage,
+      userName,
+      history: Array.isArray(history) ? history.slice(-10) : [],
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to get buyer support response');
+  }
+
+  return data.reply;
+}
+
 export async function askSellerSupport({
   message,
   isSuspended = false,
