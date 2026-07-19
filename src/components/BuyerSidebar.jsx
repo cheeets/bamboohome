@@ -70,6 +70,13 @@ export default function BuyerSidebar() {
   }
 
   const isActive = (path) => location.pathname === path
+  
+  // Shared navigation handler for buyer sidebar
+  const handleNavigation = () => {
+    if (window.innerWidth <= 1024) {
+      setSidebarOpen(false);
+    }
+  };
 
   const initials = (userName || user?.email || 'U').charAt(0).toUpperCase()
 
@@ -108,6 +115,7 @@ export default function BuyerSidebar() {
                 key={id}
                 to={path}
                 className={`buyer-nav-item ${isActive(path) ? 'active' : ''}`}
+                onClick={handleNavigation}
               >
                 <Icon size={18} />
                 {label}

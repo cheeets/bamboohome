@@ -74,7 +74,7 @@ export default function AdminProductsDashboard({ allProducts, onDeleteProduct, o
         </div>
         <div className="header-stats">
           <div className="mini-stat">
-            <span className="label">Total SKUs</span>
+            <span className="label">Total Products</span>
             <span className="value">{activeProducts.length}</span>
           </div>
           <div className="mini-stat">

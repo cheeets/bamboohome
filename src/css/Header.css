@@ -254,7 +254,7 @@
 }
 
 .menu-toggle {
-  display: none;
+  display: none !important; /* Hide navbar hamburger entirely to prevent duplicates */
   background: var(--white);
   border: 1.5px solid var(--border-color);
   color: var(--text-primary);

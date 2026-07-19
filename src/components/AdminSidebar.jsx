@@ -24,6 +24,17 @@ export default function AdminSidebar({ activeView, setActiveView, activeSubView,
   const [pendingReportCount, setPendingReportCount] = useState(0)
   const { logout } = useAuth()
   const navigate = useNavigate()
+  
+  // Shared navigation handler
+  const handleNavigation = (view, subView = null) => {
+    setActiveView(view);
+    if (subView) setActiveSubView(subView);
+    window.scrollTo(0, 0);
+    
+    if (window.innerWidth <= 1024) {
+      setSidebarOpen(false);
+    }
+  };
 
   // Listen for pending reports
   useEffect(() => {
@@ -47,16 +58,7 @@ export default function AdminSidebar({ activeView, setActiveView, activeSubView,
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const handleMenuClick = (menuId, firstSubId = null) => {
-    setActiveView(menuId)
-    if (firstSubId) {
-      setActiveSubView(firstSubId)
-    }
-    window.scrollTo(0, 0)
-    if (window.innerWidth <= 1024) {
-      setSidebarOpen(false)
-    }
-  }
+
 
   return (
     <div className="dashboard-sidebar-slot">
@@ -81,19 +83,19 @@ export default function AdminSidebar({ activeView, setActiveView, activeSubView,
             <span className="nav-label">Platform Core</span>
             <button
               className={`nav-item ${activeView === 'analytics' ? 'active' : ''}`}
-              onClick={() => handleMenuClick('analytics', 'orders-analytics')}
+              onClick={() => handleNavigation('analytics', 'orders-analytics')}
             >
               <BarChart3 size={16} /> Analytics
             </button>
             <button
               className={`nav-item ${activeView === 'users' ? 'active' : ''}`}
-              onClick={() => handleMenuClick('users', 'all-users')}
+              onClick={() => handleNavigation('users', 'all-users')}
             >
               <Users size={16} /> Users
             </button>
             <button
               className={`nav-item ${activeView === 'seller-performance' ? 'active' : ''}`}
-              onClick={() => handleMenuClick('seller-performance', 'seller-metrics')}
+              onClick={() => handleNavigation('seller-performance', 'seller-metrics')}
             >
               <Award size={16} /> Seller Performance
             </button>
@@ -103,19 +105,19 @@ export default function AdminSidebar({ activeView, setActiveView, activeSubView,
             <span className="nav-label">Catalog Management</span>
             <button
               className={`nav-item ${activeView === 'categories' ? 'active' : ''}`}
-              onClick={() => handleMenuClick('categories', 'all-categories')}
+              onClick={() => handleNavigation('categories', 'all-categories')}
             >
               <Tag size={16} /> Categories
             </button>
             <button
               className={`nav-item ${activeView === 'products' ? 'active' : ''}`}
-              onClick={() => handleMenuClick('products', 'all-products')}
+              onClick={() => handleNavigation('products', 'all-products')}
             >
               <ShoppingBag size={16} /> Products
             </button>
             <button
               className={`nav-item ${activeView === 'inventory' ? 'active' : ''}`}
-              onClick={() => handleMenuClick('inventory', 'inventory-overview')}
+              onClick={() => handleNavigation('inventory', 'inventory-overview')}
             >
               <Package size={16} /> Inventory
             </button>
@@ -125,7 +127,7 @@ export default function AdminSidebar({ activeView, setActiveView, activeSubView,
             <span className="nav-label">Moderation</span>
             <button
               className={`nav-item ${activeView === 'reports' ? 'active' : ''}`}
-              onClick={() => handleMenuClick('reports')}
+              onClick={() => handleNavigation('reports')}
               style={{ position: 'relative' }}
             >
               <Flag size={16} /> Store Reports

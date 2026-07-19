@@ -14,6 +14,15 @@ export default function SellerSidebar({ activeView, setActiveView }) {
   const [pendingOrders, setPendingOrders] = useState(0)
   const [lowStockCount, setLowStockCount] = useState(0)
   const [unreadNotifications, setUnreadNotifications] = useState(0)
+  
+  // Shared navigation handler
+  const handleNavigation = (view) => {
+    setActiveView(view);
+    window.scrollTo(0, 0);
+    if (window.innerWidth <= 1024) {
+      setSidebarOpen(false);
+    }
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -89,10 +98,10 @@ export default function SellerSidebar({ activeView, setActiveView }) {
         <nav className="sidebar-nav">
           <div className="nav-group">
             <span className="nav-label">Business</span>
-            <button className={`nav-item ${activeView === 'analytics' ? 'active' : ''}`} onClick={() => { setActiveView('analytics'); window.scrollTo(0, 0) }}>
+            <button className={`nav-item ${activeView === 'analytics' ? 'active' : ''}`} onClick={() => handleNavigation('analytics')}>
               <BarChart3 size={16} /> Analytics
             </button>
-            <button className={`nav-item ${activeView === 'orders' ? 'active' : ''}`} onClick={() => { setActiveView('orders'); window.scrollTo(0, 0) }}>
+            <button className={`nav-item ${activeView === 'orders' ? 'active' : ''}`} onClick={() => handleNavigation('orders')}>
               <ShoppingCart size={16} /> Orders
               {pendingOrders > 0 && <span className="notif-badge">{pendingOrders}</span>}
             </button>
@@ -100,26 +109,26 @@ export default function SellerSidebar({ activeView, setActiveView }) {
 
           <div className="nav-group">
             <span className="nav-label">Catalog</span>
-            <button className={`nav-item ${activeView === 'inventory' ? 'active' : ''}`} onClick={() => { setActiveView('inventory'); window.scrollTo(0, 0) }}>
+            <button className={`nav-item ${activeView === 'inventory' ? 'active' : ''}`} onClick={() => handleNavigation('inventory')}>
               <Package size={16} /> Inventory
               {lowStockCount > 0 && <span className="notif-badge">{lowStockCount}</span>}
             </button>
-            <button className={`nav-item ${activeView === 'products' ? 'active' : ''}`} onClick={() => { setActiveView('products'); window.scrollTo(0, 0) }}>
+            <button className={`nav-item ${activeView === 'products' ? 'active' : ''}`} onClick={() => handleNavigation('products')}>
               <ShoppingBag size={16} /> Products
             </button>
           </div>
 
           <div className="nav-group">
             <span className="nav-label">Communication</span>
-            <button className={`nav-item ${activeView === 'notifications' ? 'active' : ''}`} onClick={() => { setActiveView('notifications'); window.scrollTo(0, 0) }}>
+            <button className={`nav-item ${activeView === 'notifications' ? 'active' : ''}`} onClick={() => handleNavigation('notifications')}>
               <AlertTriangle size={16} /> Notifications
               {unreadNotifications > 0 && <span className="notif-badge">{unreadNotifications}</span>}
             </button>
-            <button className={`nav-item ${activeView === 'messages' ? 'active' : ''}`} onClick={() => { setActiveView('messages'); window.scrollTo(0, 0) }}>
+            <button className={`nav-item ${activeView === 'messages' ? 'active' : ''}`} onClick={() => handleNavigation('messages')}>
               <MessageCircle size={16} /> Messages
               {unreadMessages > 0 && <span className="notif-badge">{unreadMessages}</span>}
             </button>
-            <button className={`nav-item ${activeView === 'ai-support' ? 'active' : ''}`} onClick={() => { setActiveView('ai-support'); window.scrollTo(0, 0) }}>
+            <button className={`nav-item ${activeView === 'ai-support' ? 'active' : ''}`} onClick={() => handleNavigation('ai-support')}>
               <Bot size={16} /> AI Support
             </button>
           </div>

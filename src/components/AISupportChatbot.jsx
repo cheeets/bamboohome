@@ -152,7 +152,7 @@ export default function AISupportChatbot({
   }
 
   return (
-    <div className="floating-chatbot-container">
+    <div className={`floating-chatbot-container ${isOpen ? 'chat-open' : ''}`}>
       {/* Floating Button */}
       <button
         type="button"
