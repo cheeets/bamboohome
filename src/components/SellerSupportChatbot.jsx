@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { askSellerSupport } from '../services/aiService'
+import { MessageCircle, Minus, X } from 'lucide-react'
 import '../css/SellerSupportChatbot.css'
 
 const initialAssistantMessage = (isSuspended) => {
@@ -8,13 +9,15 @@ const initialAssistantMessage = (isSuspended) => {
       role: 'assistant',
       content:
         'Your account is currently suspended. I can explain the provided reason, remaining time, marketplace rules, and how to request a review. I cannot remove or override the suspension.',
+      timestamp: new Date()
     }
   }
 
   return {
     role: 'assistant',
     content:
-      'Welcome to Bamboo Home Seller Support. Ask me about managing products, inventory, orders, analytics, notifications, or seller responsibilities.',
+      'Hi! I’m Bamboo Home AI Support. How can I help you today?',
+    timestamp: new Date()
   }
 }
 
@@ -22,7 +25,7 @@ const normalSuggestions = [
   'How do I add a product?',
   'How do I update product stock?',
   'How do I process a pending order?',
-  'How do I mark an order as delivered?',
+  'How do I contact a seller?',
   'How do I view my sales analytics?',
   'Why is my product not visible?',
   'How can I improve my sales?',
@@ -45,16 +48,13 @@ export default function SellerSupportChatbot({
   sellerName,
   storeName,
 }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [isMinimized, setIsMinimized] = useState(false)
   const [messages, setMessages] = useState([initialAssistantMessage(isSuspended)])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const messagesEndRef = useRef(null)
-
-  const pageTitle = isSuspended ? 'Seller Support Assistant' : 'AI Seller Support'
-  const pageSubtitle = isSuspended
-    ? 'Get guidance about your suspension, marketplace rules, and review process.'
-    : 'Ask questions about products, orders, inventory, analytics, and seller responsibilities.'
 
   const suggestions = useMemo(
     () => (isSuspended ? suspendedSuggestions : normalSuggestions),
@@ -68,10 +68,10 @@ export default function SellerSupportChatbot({
   }, [isSuspended])
 
   useEffect(() => {
-    if (messagesEndRef.current) {
+    if (messagesEndRef.current && isOpen && !isMinimized) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [messages])
+  }, [messages, isOpen, isMinimized])
 
   const clearChat = () => {
     setMessages([initialAssistantMessage(isSuspended)])
@@ -79,15 +79,20 @@ export default function SellerSupportChatbot({
     setError('')
   }
 
+  const formatTime = (date) => {
+    if (!date) return ''
+    const d = new Date(date)
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+  }
+
   const handleSend = async (event) => {
     event.preventDefault()
     const trimmed = inputValue.trim()
-    if (!trimmed) {
-      setError('Please enter a question before sending.')
+    if (!trimmed || isLoading) {
       return
     }
 
-    const userMessage = { role: 'user', content: trimmed }
+    const userMessage = { role: 'user', content: trimmed, timestamp: new Date() }
     const updatedMessages = [...messages, userMessage]
     setMessages(updatedMessages)
     setInputValue('')
@@ -110,7 +115,7 @@ export default function SellerSupportChatbot({
         history,
       })
 
-      setMessages((current) => [...current, { role: 'assistant', content: reply }])
+      setMessages((current) => [...current, { role: 'assistant', content: reply, timestamp: new Date() }])
     } catch (err) {
       setError(err.message || 'Unable to get a response from the support assistant.')
       setMessages((current) => [
@@ -119,6 +124,7 @@ export default function SellerSupportChatbot({
           role: 'assistant',
           content:
             'I could not complete that request. Please try again or contact administrator support.',
+          timestamp: new Date()
         },
       ])
     } finally {
@@ -126,65 +132,147 @@ export default function SellerSupportChatbot({
     }
   }
 
+  const handleSuggestionClick = (question) => {
+    setInputValue(question)
+  }
+
   return (
-    <div className="seller-support-chatbot">
-      <div className="chatbot-header">
-        <div>
-          <h1>{pageTitle}</h1>
-          <p>{pageSubtitle}</p>
-        </div>
-        <button type="button" className="chatbot-clear-btn" onClick={clearChat}>
-          Clear chat
-        </button>
-      </div>
+    <div className="floating-chatbot-container">
+      {/* Floating Button */}
+      <button
+        type="button"
+        className="floating-chat-button"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-label={isOpen ? 'Close chat' : 'Open chat'}
+      >
+        {isOpen ? <X size={28} /> : <MessageCircle size={28} />}
+      </button>
 
-      <div className="seller-support-messages chatbot-messages" role="log" aria-live="polite">
-        {messages.map((message, index) => (
-          <div
-            key={`${message.role}-${index}`}
-            className={`seller-support-message chatbot-message ${message.role === 'user' ? 'user-message' : 'assistant-message'}`}
-          >
-            <div className="message-label">
-              {message.role === 'user' ? 'You' : 'Support'}
+      {/* Chat Panel */}
+      {isOpen && (
+        <div className={`chat-panel ${isMinimized ? 'minimized' : ''}`}>
+          {/* Header */}
+          <div className="chat-panel-header">
+            <div className="chat-header-content">
+              <div className="chat-bot-icon">
+                <MessageCircle size={20} />
+              </div>
+              <div className="chat-header-text">
+                <h3>Bamboo Home AI Support</h3>
+                <span className="online-status">
+                  <span className="status-dot"></span>
+                  Online
+                </span>
+              </div>
             </div>
-            <div className="message-content">{message.content}</div>
+            <div className="chat-header-actions">
+              <button
+                type="button"
+                className="chat-header-btn"
+                onClick={() => setIsMinimized(!isMinimized)}
+                aria-label={isMinimized ? 'Maximize chat' : 'Minimize chat'}
+              >
+                <Minus size={16} />
+              </button>
+              <button
+                type="button"
+                className="chat-header-btn"
+                onClick={() => setIsOpen(false)}
+                aria-label="Close chat"
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
 
-      <div className="chatbot-suggestions">
-        {suggestions.map((question) => (
-          <button
-            key={question}
-            type="button"
-            className="chatbot-suggestion-button"
-            onClick={() => setInputValue(question)}
-          >
-            {question}
-          </button>
-        ))}
-      </div>
+          {/* Chat Content */}
+          {!isMinimized && (
+            <div className="chat-panel-content">
+              {/* Messages */}
+              <div className="chat-messages-container" role="log" aria-live="polite">
+                {messages.map((message, index) => (
+                  <div
+                    key={`${message.role}-${index}`}
+                    className={`chat-message ${message.role === 'user' ? 'user' : 'assistant'}`}
+                  >
+                    {message.role === 'assistant' && (
+                      <div className="chat-avatar">
+                        <MessageCircle size={18} />
+                      </div>
+                    )}
+                    <div className="chat-message-wrapper">
+                      <div className="chat-message-bubble">
+                        {message.content}
+                      </div>
+                      {message.timestamp && (
+                        <span className="chat-message-time">
+                          {formatTime(message.timestamp)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
 
-      <form className="seller-support-input-area chatbot-input-row" onSubmit={handleSend}>
-        <label htmlFor="seller-support-input" className="sr-only">
-          Enter your question
-        </label>
-        <input
-          id="seller-support-input"
-          value={inputValue}
-          onChange={(event) => setInputValue(event.target.value)}
-          placeholder="Ask your question here"
-          className="chatbot-input"
-          disabled={isLoading}
-          aria-disabled={isLoading}
-        />
-        <button type="submit" className="chatbot-send-button" disabled={isLoading}>
-          {isLoading ? 'Sending…' : 'Send'}
-        </button>
-      </form>
+                {/* Typing Indicator */}
+                {isLoading && (
+                  <div className="chat-message assistant">
+                    <div className="chat-avatar">
+                      <MessageCircle size={18} />
+                    </div>
+                    <div className="chat-message-wrapper">
+                      <div className="chat-message-bubble typing-bubble">
+                        <span className="typing-dot"></span>
+                        <span className="typing-dot"></span>
+                        <span className="typing-dot"></span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-      {error && <div className="chatbot-error">{error}</div>}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Suggestions */}
+              <div className="chat-suggestions">
+                {suggestions.map((question, index) => (
+                  <button
+                    key={`suggestion-${index}`}
+                    type="button"
+                    className="chat-suggestion-btn"
+                    onClick={() => handleSuggestionClick(question)}
+                  >
+                    {question}
+                  </button>
+                ))}
+              </div>
+
+              {/* Input */}
+              <form className="chat-input-form" onSubmit={handleSend}>
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="Ask Bamboo Home Support..."
+                  className="chat-input"
+                  disabled={isLoading}
+                  aria-disabled={isLoading}
+                />
+                <button
+                  type="submit"
+                  className="chat-send-btn"
+                  disabled={!inputValue.trim() || isLoading}
+                  aria-disabled={!inputValue.trim() || isLoading}
+                >
+                  Send
+                </button>
+              </form>
+
+              {/* Error */}
+              {error && <div className="chat-error-message">{error}</div>}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
