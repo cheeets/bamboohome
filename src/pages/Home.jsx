@@ -10,6 +10,22 @@ export function Home() {
   const { user, userRole } = useAuth()
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [showSignupModal, setShowSignupModal] = useState(false)
+  const [displayText, setDisplayText] = useState('')
+  const fullText = 'Bamboo Home'
+  const typingSpeed = 150 // ms per character
+
+  useEffect(() => {
+    let index = 0
+    const timer = setInterval(() => {
+      if (index < fullText.length) {
+        setDisplayText(fullText.slice(0, index + 1))
+        index++
+      } else {
+        clearInterval(timer)
+      }
+    }, typingSpeed)
+    return () => clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     if (user && userRole === 'seller') {
@@ -32,6 +48,12 @@ export function Home() {
       <section className="landing-hero">
         <div className="hero-content-wrapper">
           <div className="hero-text">
+            <div className="typewriter-container">
+              <h2 className="typewriter-text">
+                {displayText}
+                <span className="typewriter-cursor">|</span>
+              </h2>
+            </div>
             <h1 className="hero-title">
               Rooted in Strength,<br />
               Designed for <span className="hero-highlight">Growth</span>

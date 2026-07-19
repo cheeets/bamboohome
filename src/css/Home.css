@@ -4,6 +4,35 @@
   background: var(--white);
 }
 
+/* ── Typewriter ── */
+.typewriter-container {
+  margin-bottom: 20px;
+}
+
+.typewriter-text {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(36px, 4.5vw, 52px);
+  font-weight: 700;
+  color: #2E7D32; /* Primary green */
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.typewriter-cursor {
+  display: inline-block;
+  width: 3px;
+  background-color: #2E7D32;
+  margin-left: 4px;
+  animation: blink 1s step-end infinite;
+  vertical-align: baseline;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 /* ── Hero ── */
 .landing-hero {
   min-height: 100vh;
