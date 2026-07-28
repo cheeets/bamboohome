@@ -6,6 +6,7 @@ import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import { Toast } from '../components/Toast'
 import { formatPrice } from '../utils/rating'
+import { createNotification } from '../services/notificationService'
 import '../css/CheckoutPage.css'
 
 export function CheckoutPage() {
@@ -263,6 +264,26 @@ export function CheckoutPage() {
           transaction.set(orderRef, orderData)
         }
       })
+
+      // Send notification to each seller for the new order
+      try {
+        for (const sellerId of sellerIds) {
+          const itemsForSeller = itemsBySeller[sellerId] || []
+          const sellerOrderRef = orderRefsBySeller[sellerId]
+          const orderId = sellerOrderRef.id
+          const itemCount = itemsForSeller.reduce((sum, it) => sum + (it.quantity || 1), 0)
+          const orderTotal = itemsForSeller.reduce((sum, it) => sum + (it.price || 0) * (it.quantity || 1), 0)
+          const buyerNameText = formData.fullName.trim() || user?.email?.split('@')[0] || 'A buyer'
+          await createNotification(
+            sellerId,
+            `${buyerNameText} placed a new order (${itemCount} item${itemCount > 1 ? 's' : ''}) for ${formatPrice(orderTotal)}.`,
+            orderId,
+            'new_order'
+          )
+        }
+      } catch (notifErr) {
+        console.error('Error sending seller new-order notifications:', notifErr)
+      }
 
       // Clear cart on successful transaction.
       clearCart()

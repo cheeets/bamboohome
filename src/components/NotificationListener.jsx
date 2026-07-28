@@ -71,7 +71,7 @@ export function NotificationListener() {
         if (previousStatus && previousStatus !== currentStatus) {
           let notification = null
           
-          if (currentStatus === 'processing') {
+          if (currentStatus === 'accepted') {
             notification = {
               id: `${orderId}_${Date.now()}`,
               orderId,
@@ -80,6 +80,17 @@ export function NotificationListener() {
               title: 'Order Accepted!',
               message: 'Your order has been accepted by the seller and is being prepared.',
               color: '#22c55e',
+              timestamp: new Date()
+            }
+          } else if (currentStatus === 'processing') {
+            notification = {
+              id: `${orderId}_${Date.now()}`,
+              orderId,
+              type: 'processing',
+              icon: <Package size={24} />,
+              title: 'Order Processing',
+              message: 'Your order is now being processed.',
+              color: '#3b82f6',
               timestamp: new Date()
             }
           } else if (currentStatus === 'delivered') {
@@ -92,6 +103,17 @@ export function NotificationListener() {
               title: 'Out for Delivery!',
               message: deliveryMessage,
               color: '#3b82f6',
+              timestamp: new Date()
+            }
+          } else if (currentStatus === 'rejected') {
+            notification = {
+              id: `${orderId}_${Date.now()}`,
+              orderId,
+              type: 'rejected',
+              icon: <AlertTriangle size={24} />,
+              title: 'Order Rejected',
+              message: 'Your order has been rejected by the seller.',
+              color: '#ef4444',
               timestamp: new Date()
             }
           }
@@ -163,6 +185,17 @@ export function NotificationListener() {
                 color: '#22c55e',
                 timestamp: new Date()
               }
+            } else if (data.type === 'order_processing') {
+              notification = {
+                id: `${notificationId}_${Date.now()}`,
+                orderId: data.relatedId,
+                type: 'processing',
+                icon: <Package size={24} />,
+                title: 'Order Processing',
+                message: data.message,
+                color: '#3b82f6',
+                timestamp: new Date()
+              }
             } else if (data.type === 'out_for_delivery') {
               notification = {
                 id: `${notificationId}_${Date.now()}`,
@@ -172,6 +205,17 @@ export function NotificationListener() {
                 title: 'Out for Delivery!',
                 message: data.message,
                 color: '#3b82f6',
+                timestamp: new Date()
+              }
+            } else if (data.type === 'order_rejected') {
+              notification = {
+                id: `${notificationId}_${Date.now()}`,
+                orderId: data.relatedId,
+                type: 'rejected',
+                icon: <AlertTriangle size={24} />,
+                title: 'Order Rejected',
+                message: data.message,
+                color: '#ef4444',
                 timestamp: new Date()
               }
             }

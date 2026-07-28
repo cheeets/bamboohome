@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { db } from '../services/firebase'
-import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { LoginModal } from './LoginModal'
@@ -37,7 +37,7 @@ export function Header() {
   }, [location.pathname, location.search])
 
   useEffect(() => {
-    if (!user || userRole !== 'user') {
+    if (!user || (userRole !== 'user' && userRole !== 'seller')) {
       setUnreadNotifications(0)
       setNotifications([])
       return
@@ -87,10 +87,25 @@ export function Header() {
     }
   }
 
+  const deleteNotification = async (notificationId, e) => {
+    e.stopPropagation()
+    try {
+      await deleteDoc(doc(db, 'notifications', notificationId))
+    } catch (error) {
+      console.error('Error deleting notification:', error)
+    }
+  }
+
   const handleNotificationClick = (notification) => {
     markNotificationAsRead(notification.id)
     setShowNotificationDropdown(false)
-    if (notification.orderId) navigate('/orders')
+    if (notification.relatedId || notification.orderId) {
+      if (userRole === 'seller') {
+        navigate('/seller/dashboard')
+      } else {
+        navigate('/orders')
+      }
+    }
   }
 
   const formatNotificationTime = (timestamp) => {
@@ -133,7 +148,7 @@ export function Header() {
             <Link to="/shop" className="header-top-link">Shop</Link>
           </div>
           <div className="header-top-links">
-            {user && userRole === 'user' && (
+            {user && (userRole === 'user' || userRole === 'seller') && (
               <button
                 type="button"
                 className="header-top-link header-top-btn"
@@ -255,7 +270,7 @@ export function Header() {
         />
       )}
 
-      {showNotificationDropdown && user && userRole === 'user' && (
+      {showNotificationDropdown && user && (userRole === 'user' || userRole === 'seller') && (
         <div className="notification-dropdown">
           <div className="notification-dropdown-header">
             <h3>Notifications</h3>
@@ -275,15 +290,39 @@ export function Header() {
                   key={notif.id}
                   onClick={() => handleNotificationClick(notif)}
                   className={`notification-item ${notif.isRead ? '' : 'unread'}`}
+                  style={{ position: 'relative' }}
                 >
-                  <div className="notification-item-top">
+                  <button
+                    type="button"
+                    onClick={(e) => deleteNotification(notif.id, e)}
+                    style={{
+                      position: 'absolute',
+                      top: '8px',
+                      right: '8px',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#9ca3af',
+                      padding: '4px'
+                    }}
+                    aria-label="Delete notification"
+                  >
+                    <X size={14} />
+                  </button>
+                  <div className="notification-item-top" style={{ paddingRight: '32px' }}>
                     <span className="notification-item-title">
-                      {notif.type === 'order_accepted' ? '✅ Order Accepted' : '🚚 Out for Delivery'}
+                      {notif.type === 'order_accepted' ? '✅ Order Accepted' :
+                       notif.type === 'order_rejected' ? '❌ Order Rejected' :
+                       notif.type === 'order_processing' ? '⚙️ Order Processing' :
+                       notif.type === 'out_for_delivery' ? '🚚 Out for Delivery' :
+                       notif.type === 'new_order' ? '🛒 New Order' :
+                       notif.type === 'seller_warning' ? '⚠️ Admin Warning' :
+                       '🔔 Notification'}
                     </span>
                     <span className="notification-item-time">{formatNotificationTime(notif.createdAt)}</span>
                   </div>
                   <p className="notification-item-message">{notif.message}</p>
-                  <span className="notification-item-order">Order #{notif.orderId?.slice(0, 8).toUpperCase()}</span>
+                  <span className="notification-item-order">Order #{(notif.relatedId || notif.orderId)?.slice(0, 8).toUpperCase()}</span>
                 </div>
               ))
             )}

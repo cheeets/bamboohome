@@ -57,12 +57,18 @@ export function Orders() {
           const data = change.doc.data()
           const status = normalizeStatus(data.status)
           
-          if (status === 'processing') {
+          if (status === 'accepted') {
             setToastMessage('🎉 Your order has been accepted by the seller!')
+            setToastType('success')
+          } else if (status === 'processing') {
+            setToastMessage('⚙️ Your order is now being processed.')
             setToastType('success')
           } else if (status === 'shipped' || status === 'delivered') {
             setToastMessage('📦 Your order is ready for delivery!')
             setToastType('success')
+          } else if (status === 'rejected') {
+            setToastMessage('❌ Your order has been rejected by the seller.')
+            setToastType('error')
           }
         }
       })

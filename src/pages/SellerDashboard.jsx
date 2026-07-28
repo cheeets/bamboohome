@@ -191,14 +191,14 @@ export function SellerDashboard() {
             const userData = userDocSnap.exists() ? userDocSnap.data() : {}
             return {
               ...order,
-              buyerName: userData.name || order.userEmail || 'Unknown',
+              buyerName: order.address?.fullName || userData.fullName || userData.name || userData.displayName || order.userEmail || 'Unknown',
               buyerEmail: order.userEmail || userData.email || 'N/A',
             }
           } catch (err) {
             console.error(`Error fetching user details for order ${order.id}:`, err)
             return {
               ...order,
-              buyerName: 'Unknown',
+              buyerName: order.address?.fullName || 'Unknown',
               buyerEmail: order.userEmail || 'N/A',
             }
           }
@@ -256,6 +256,18 @@ export function SellerDashboard() {
           order.id === orderId ? { ...order, status: newStatus } : order
         )
       )
+      
+      const normalizedStatus = newStatus.toLowerCase()
+      if (normalizedStatus === 'accepted') {
+        setToastMessage('Order accepted successfully!')
+        setToastType('success')
+      } else if (normalizedStatus === 'processing') {
+        setToastMessage('Order moved to Processing! ')
+        setToastType('success')
+      } else if (normalizedStatus === 'rejected') {
+        setToastMessage('Order rejected.')
+        setToastType('success')
+      }
       
       console.log(`✅ Order ${orderId} updated to ${newStatus}`)
     } catch (err) {
@@ -334,7 +346,7 @@ export function SellerDashboard() {
   }
 
   const getBuyerDisplayName = (order) => {
-    return order.buyerName || order.buyerEmail || order.userEmail || 'Unknown Buyer'
+    return order.address?.fullName || order.buyerName || order.buyerEmail || order.userEmail || 'Unknown Buyer'
   }
 
   const formatOrderDate = (createdAt) => {
@@ -724,9 +736,10 @@ export function SellerDashboard() {
   )
 
   // Filter processing and completed orders
-  const processingOrders = ordersWithDetails.filter(order => 
-    normalizeOrderStatus(order.status) === 'processing' || normalizeOrderStatus(order.status) === 'shipped'
-  )
+  const processingOrders = ordersWithDetails.filter(order => {
+    const status = normalizeOrderStatus(order.status)
+    return status === 'accepted' || status === 'processing' || status === 'shipped'
+  })
 
   const completedOrders = ordersWithDetails.filter(order => 
     normalizeOrderStatus(order.status) === 'completed' || normalizeOrderStatus(order.status) === 'delivered'
@@ -776,13 +789,20 @@ export function SellerDashboard() {
                 <div className="seller-order-meta">
                   <div>
                     <span className="seller-order-label">Buyer</span>
-                    <strong>{getBuyerDisplayName(order)}</strong>
-                    <p>{order.buyerEmail || 'N/A'}</p>
+                    <strong>{order.buyerName || order.userEmail?.split('@')[0] || 'Unknown'}</strong>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>{order.buyerEmail || 'N/A'}</p>
+                    <div style={{ marginTop: '8px' }}>
+                      <span className="seller-order-label" style={{ fontSize: '11px', letterSpacing: '0.04em' }}>Full Name</span>
+                      <p style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 600, color: '#1f2937' }}>{order.address?.fullName || getBuyerDisplayName(order)}</p>
+                    </div>
                   </div>
                   <div>
                     <span className="seller-order-label">Placed</span>
                     <strong>{formatOrderDate(order.createdAt)}</strong>
-                    <p>{order.address?.phoneNumber || 'No phone provided'}</p>
+                    <div style={{ marginTop: '4px' }}>
+                      <span className="seller-order-label" style={{ fontSize: '11px', letterSpacing: '0.04em' }}>Phone</span>
+                      <p style={{ margin: '2px 0 0', fontSize: '13px' }}>{order.address?.phoneNumber || 'No phone provided'}</p>
+                    </div>
                   </div>
                 </div>
 
@@ -819,13 +839,42 @@ export function SellerDashboard() {
                     <span className="seller-order-label">Seller Total</span>
                     <strong>{formatPrice(getOrderTotal(order))}</strong>
                   </div>
-                  {actionLabel && actionStatus && (
-                    <button
-                      className={actionClassName}
-                      onClick={() => updateOrderStatus(order.id, actionStatus)}
-                    >
-                      {actionLabel}
-                    </button>
+                  {normalizeOrderStatus(order.status) === 'pending' ? (
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      <button
+                        className="btn-reject"
+                        onClick={() => updateOrderStatus(order.id, 'Rejected')}
+                        style={{
+                          background: '#FEF2F2',
+                          color: '#B91C1C',
+                          border: '1px solid #FECACA',
+                          padding: '10px 18px',
+                          borderRadius: '10px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          fontSize: '13px'
+                        }}
+                      >
+                        Reject
+                      </button>
+                      {actionLabel && actionStatus && (
+                        <button
+                          className={actionClassName}
+                          onClick={() => updateOrderStatus(order.id, actionStatus)}
+                        >
+                          {actionLabel}
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    actionLabel && actionStatus && (
+                      <button
+                        className={actionClassName}
+                        onClick={() => updateOrderStatus(order.id, actionStatus)}
+                      >
+                        {actionLabel}
+                      </button>
+                    )
                   )}
                 </div>
               </article>

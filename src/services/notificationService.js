@@ -1,5 +1,5 @@
 import { db } from './firebase'
-import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, setDoc } from 'firebase/firestore'
+import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, setDoc, query, where, getDocs, limit } from 'firebase/firestore'
 
 /**
  * Create a notification in Firestore
@@ -17,6 +17,28 @@ export async function createNotification(userId, message, relatedId = null, type
   }
   
   try {
+    // Optional duplicate check. This uses a 3-field query that requires a composite
+    // Firestore index; if the index is missing, we still create the notification to
+    // avoid losing notifications silently.
+    if (relatedId) {
+      try {
+        const duplicateQuery = query(
+          collection(db, 'notifications'),
+          where('userId', '==', userId),
+          where('relatedId', '==', relatedId),
+          where('type', '==', type),
+          limit(1)
+        )
+        const duplicateSnapshot = await getDocs(duplicateQuery)
+        if (!duplicateSnapshot.empty) {
+          console.log('⚠️ Skipping duplicate notification:', { userId, relatedId, type })
+          return
+        }
+      } catch (dupErr) {
+        console.warn('⚠️ Duplicate check failed (composite index missing?); proceeding with notification creation:', dupErr?.message)
+      }
+    }
+
     const notificationData = {
       userId,
       message,
@@ -102,13 +124,21 @@ export async function notifyOrderStatusChange(userId, orderId, newStatus, delive
   const status = newStatus.toLowerCase()
   console.log('📊 Normalized status:', status)
   
-  if (status === 'processing') {
+  if (status === 'accepted') {
     console.log('✉️ Triggering order_accepted notification')
     await createNotification(
       userId,
       'Your order has been accepted by the seller and is being prepared.',
       orderId,
       'order_accepted'
+    )
+  } else if (status === 'processing') {
+    console.log('✉️ Triggering order_processing notification')
+    await createNotification(
+      userId,
+      'Your order is now being processed.',
+      orderId,
+      'order_processing'
     )
   } else if (status === 'delivered') {
     console.log('✉️ Triggering out_for_delivery notification')
@@ -118,6 +148,14 @@ export async function notifyOrderStatusChange(userId, orderId, newStatus, delive
       message,
       orderId,
       'out_for_delivery'
+    )
+  } else if (status === 'rejected') {
+    console.log('✉️ Triggering order_rejected notification')
+    await createNotification(
+      userId,
+      'Your order has been rejected by the seller.',
+      orderId,
+      'order_rejected'
     )
   } else {
     console.log('⚠️ Status not matched for notification:', status)
