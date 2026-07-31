@@ -10,6 +10,27 @@ import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firest
 
 const AuthContext = createContext()
 
+export const PINAMUNGAJAN_BARANGAYS = [
+  'Anislag', 'Anopog', 'Binabag', 'Buhingtubig', 'Busay', 'Butong',
+  'Cabiangon', 'Camugao', 'Duangan', 'Guimbawian', 'Lamac', 'Lut-od',
+  'Mangoto', 'Opao', 'Pandacan', 'Poblacion', 'Punod', 'Rizal',
+  'Sacsac', 'Sambagon', 'Sibago', 'Tajao', 'Tangub', 'Tanibag',
+  'Tupas', 'Tutay',
+]
+
+export const CEBU_CITIES_AND_MUNICIPALITIES = [
+  'Alcantara', 'Alcoy', 'Alegria', 'Aloguinsan', 'Argao', 'Asturias',
+  'Badian', 'Balamban', 'Bantayan', 'Barili', 'Bogo City', 'Boljoon',
+  'Borbon', 'Carcar City', 'Carmen', 'Catmon', 'Cebu City', 'Compostela',
+  'Consolacion', 'Cordova', 'Daanbantayan', 'Dalaguete', 'Danao City',
+  'Dumanjug', 'Ginatilan', 'Lapu-Lapu City', 'Liloan', 'Madridejos',
+  'Malabuyoc', 'Mandaue City', 'Medellin', 'Minglanilla', 'Moalboal',
+  'Naga City', 'Oslob', 'Pilar', 'Pinamungajan', 'Poro', 'Ronda',
+  'Samboan', 'San Fernando', 'San Francisco', 'San Remigio', 'Santa Fe',
+  'Santander', 'Sibonga', 'Sogod', 'Tabogon', 'Tabuelan', 'Talisay City',
+  'Toledo City', 'Tuburan', 'Tudela',
+]
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [userRole, setUserRole] = useState(null)
@@ -139,14 +160,22 @@ export function AuthProvider({ children }) {
   }, [user, isSuspended, suspensionEndAt])
 
   // ✅ UPDATED REGISTER FUNCTION
-  const register = async (email, password, name, role = 'user', sellerStoreName = '', sellerStorePhotoUrl = '') => {
+  const register = async (
+    email,
+    password,
+    name,
+    role = 'user',
+    sellerStoreName = '',
+    sellerStorePhotoUrl = '',
+    municipality = '',
+    barangay = '',
+  ) => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-      const newUser = userCredential.user
-
       // Normalize values
       const normalizedRole = role === 'admin' ? 'admin' : role === 'seller' ? 'seller' : 'user'
       const normalizedName = name?.trim() || ''
+      const normalizedMunicipality = municipality?.trim() || ''
+      const normalizedBarangay = barangay?.trim() || ''
 
       if (!normalizedName) {
         throw new Error('Name is required.')
@@ -160,6 +189,17 @@ export function AuthProvider({ children }) {
         throw new Error('Store photo is required for sellers.')
       }
 
+      if (normalizedMunicipality !== 'Pinamungajan') {
+        throw new Error('bamboo home is currently not available in your province or city')
+      }
+
+      if (!PINAMUNGAJAN_BARANGAYS.includes(normalizedBarangay)) {
+        throw new Error('Please select Pinamungajan and a valid barangay to register.')
+      }
+
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      const newUser = userCredential.user
+
       // Save user in Firestore
       await setDoc(doc(db, 'users', newUser.uid), {
         uid: newUser.uid,
@@ -168,6 +208,8 @@ export function AuthProvider({ children }) {
         role: normalizedRole,
         storeName: normalizedRole === 'seller' ? sellerStoreName.trim() : null,
         storePhotoUrl: normalizedRole === 'seller' ? sellerStorePhotoUrl : null,
+        municipality: normalizedMunicipality,
+        barangay: normalizedBarangay,
         createdAt: serverTimestamp(),
       })
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { CEBU_CITIES_AND_MUNICIPALITIES, PINAMUNGAJAN_BARANGAYS, useAuth } from '../context/AuthContext'
 import { getFriendlyErrorMessage } from '../utils/errorMessages'
 import { useNavigate } from 'react-router-dom'
 import { ImagePlus, UploadCloud } from 'lucide-react'
@@ -10,6 +10,8 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState('user') // 'user' | 'seller'
+  const [municipality, setMunicipality] = useState('')
+  const [barangay, setBarangay] = useState('')
   const [storeName, setStoreName] = useState('')
   const [storePhotoUrl, setStorePhotoUrl] = useState('')
   const [storePhotoFile, setStorePhotoFile] = useState(null)
@@ -97,6 +99,17 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+
+    if (municipality !== 'Pinamungajan') {
+      setError('bamboo home is currently not available in your province or city')
+      return
+    }
+
+    if (!PINAMUNGAJAN_BARANGAYS.includes(barangay)) {
+      setError('Please select Pinamungajan and a valid barangay to register.')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -106,11 +119,15 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
         name,
         role,
         role === 'seller' ? storeName : '',
-        role === 'seller' ? storePhotoUrl : ''
+        role === 'seller' ? storePhotoUrl : '',
+        municipality,
+        barangay,
       )
       setName('')
       setEmail('')
       setPassword('')
+      setMunicipality('')
+      setBarangay('')
       setStoreName('')
       setStorePhotoUrl('')
       setPhotoPreview(null)
@@ -126,6 +143,8 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
     setName('')
     setEmail('')
     setPassword('')
+    setMunicipality('')
+    setBarangay('')
     setStoreName('')
     setStorePhotoUrl('')
     setPhotoPreview(null)
@@ -167,6 +186,46 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
               >
                 <option value="user">User (Buyer)</option>
                 <option value="seller">Seller</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label htmlFor="municipality">City or Municipality</label>
+              <select
+                id="municipality"
+                value={municipality}
+                onChange={(e) => {
+                  const selectedMunicipality = e.target.value
+                  setMunicipality(selectedMunicipality)
+                  setBarangay('')
+                  setError(
+                    selectedMunicipality && selectedMunicipality !== 'Pinamungajan'
+                      ? 'bamboo home is currently not available in your province or city'
+                      : ''
+                  )
+                }}
+                className="role-select-input"
+                required
+              >
+                <option value="">Select city or municipality</option>
+                {CEBU_CITIES_AND_MUNICIPALITIES.map((location) => (
+                  <option key={location} value={location}>{location}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label htmlFor="barangay">Barangay</label>
+              <select
+                id="barangay"
+                value={barangay}
+                onChange={(e) => setBarangay(e.target.value)}
+                className="role-select-input"
+                disabled={municipality !== 'Pinamungajan'}
+                required
+              >
+                <option value="">Select barangay</option>
+                {PINAMUNGAJAN_BARANGAYS.map((barangayName) => (
+                  <option key={barangayName} value={barangayName}>{barangayName}</option>
+                ))}
               </select>
             </div>
             {role === 'seller' && (
