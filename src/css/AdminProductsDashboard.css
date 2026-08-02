@@ -200,6 +200,11 @@
 .price-value {
   font-weight: 700;
   color: var(--text-color-primary);
+  font-family: var(--font-body);
+}
+
+.status-pill {
+  font-family: var(--font-body);
 }
 
 .stock-control {

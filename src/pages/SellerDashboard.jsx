@@ -45,7 +45,7 @@ ChartJS.register(
 
 export function SellerDashboard() {
   const navigate = useNavigate()
-  const { user, userRole, storeName, isSuspended, suspensionReason, suspensionEndAt, logout } = useAuth()
+  const { user, userRole, userName, storeName, isSuspended, suspensionReason, suspensionEndAt, logout } = useAuth()
 
   const [countdown, setCountdown] = useState('')
   
@@ -106,6 +106,63 @@ export function SellerDashboard() {
   const [selectedOrderForDelivery, setSelectedOrderForDelivery] = useState(null)
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState('success')
+  const [sellerProfile, setSellerProfile] = useState({ name: '', contactNumber: '', barangay: '', municipality: '' })
+  const [savingStoreProfile, setSavingStoreProfile] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+
+    const loadSellerProfile = async () => {
+      try {
+        const sellerSnapshot = await getDoc(doc(db, 'users', user.uid))
+        if (sellerSnapshot.exists()) {
+          const data = sellerSnapshot.data()
+          setSellerProfile({
+            name: data.name || userName || '',
+            contactNumber: data.contactNumber || '',
+            barangay: data.barangay || '',
+            municipality: data.municipality || 'Pinamungajan',
+          })
+        }
+      } catch (err) {
+        console.error('Error loading seller profile:', err)
+      }
+    }
+
+    loadSellerProfile()
+  }, [user, userName])
+
+  const handleSaveStoreProfile = async (e) => {
+    e.preventDefault()
+    const name = sellerProfile.name.trim().replace(/\s+/g, ' ')
+    const contactNumber = sellerProfile.contactNumber.trim()
+
+    if (!/^[\p{L}]+(?:[ '\-][\p{L}]+)+$/u.test(name)) {
+      setToastMessage('Enter your full name using letters only.')
+      setToastType('error')
+      return
+    }
+
+    if (!/^(?:09\d{9}|\+639\d{9})$/.test(contactNumber)) {
+      setToastMessage('Enter 09XXXXXXXXX or +639XXXXXXXXX for your contact number.')
+      setToastType('error')
+      return
+    }
+
+    try {
+      setSavingStoreProfile(true)
+      await updateDoc(doc(db, 'users', user.uid), { name, contactNumber })
+      setSellerProfile((current) => ({ ...current, name, contactNumber }))
+      setToastMessage('Store contact details updated.')
+      setToastType('success')
+    } catch (err) {
+      console.error('Error saving store profile:', err)
+      setToastMessage('Could not save store contact details. Please try again.')
+      setToastType('error')
+    } finally {
+      setSavingStoreProfile(false)
+    }
+  }
 
   // Real-time products listener for inventory monitoring
   useEffect(() => {
@@ -970,6 +1027,7 @@ export function SellerDashboard() {
                     {activeView === 'notifications' && 'Alerts and updates from GreenNest'}
                     {activeView === 'messages' && 'Buyer messaging and chat management'}
                     {activeView === 'ai-support' && 'Ask questions about products, orders, inventory, analytics, and seller responsibilities.'}
+                    {activeView === 'store-profile' && 'Manage the contact details shown to buyers.'}
                   </p>
                 </div>
                 <div className="header-stats">
@@ -1007,6 +1065,52 @@ export function SellerDashboard() {
 
               {/* Content Area */}
               <div className="admin-content-area">
+                {activeView === 'store-profile' && (
+                  <div className="seller-dashboard-container" style={{ maxWidth: '680px', padding: 0, background: 'none' }}>
+                    <section className="seller-products-section" style={{ padding: '28px' }}>
+                      <div className="panel-header">
+                        <div className="panel-header-text">
+                          <h1>Store Profile</h1>
+                          <p>These details appear below your store logo for buyers.</p>
+                        </div>
+                      </div>
+                      <form onSubmit={handleSaveStoreProfile} style={{ display: 'grid', gap: '18px', marginTop: '24px' }}>
+                        <label style={{ display: 'grid', gap: '8px', fontWeight: 600, color: '#374151' }}>
+                          Seller Full Name
+                          <input
+                            type="text"
+                            value={sellerProfile.name}
+                            onChange={(e) => setSellerProfile((current) => ({ ...current, name: e.target.value.replace(/\d/g, '') }))}
+                            placeholder="e.g., Maria Santos"
+                            maxLength="80"
+                            required
+                            style={{ padding: '11px 12px', border: '1px solid #d1d5db', borderRadius: '8px', font: 'inherit' }}
+                          />
+                        </label>
+                        <label style={{ display: 'grid', gap: '8px', fontWeight: 600, color: '#374151' }}>
+                          Contact Number
+                          <input
+                            type="tel"
+                            value={sellerProfile.contactNumber}
+                            onChange={(e) => setSellerProfile((current) => ({ ...current, contactNumber: e.target.value.replace(/(?!^\+)\D/g, '').slice(0, 13) }))}
+                            placeholder="09XXXXXXXXX or +639XXXXXXXXX"
+                            inputMode="tel"
+                            maxLength="13"
+                            required
+                            style={{ padding: '11px 12px', border: '1px solid #d1d5db', borderRadius: '8px', font: 'inherit' }}
+                          />
+                        </label>
+                        <div style={{ padding: '14px', background: '#f0fdf4', borderRadius: '8px', color: '#166534', fontSize: '14px' }}>
+                          Your map link uses: Barangay {sellerProfile.barangay || 'Not set'}, {sellerProfile.municipality || 'Pinamungajan'}, Cebu.
+                        </div>
+                        <button type="submit" className="btn-add-product-seller" disabled={savingStoreProfile} style={{ justifySelf: 'start' }}>
+                          {savingStoreProfile ? 'Saving...' : 'Save Store Details'}
+                        </button>
+                      </form>
+                    </section>
+                  </div>
+                )}
+
                 {activeView === 'analytics' && (
                   <div className="seller-dashboard-container" style={{ padding: 0, background: 'none' }}>
                     {/* Sales Analytics Section */}

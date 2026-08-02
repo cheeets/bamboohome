@@ -16,7 +16,7 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xl);
   width: 100%;
-  max-width: 440px;
+  max-width: 520px; /* restored to original narrower width */
   position: relative;
   overflow: visible;
   animation: modalEnter 0.3s ease-out;
@@ -252,6 +252,7 @@
 
   .login-modal2 {
     max-height: calc(100vh - 24px);
+    max-width: 100%;
   }
 
   .modal-content2 {
@@ -260,4 +261,28 @@
   }
 
   .login-modal2 h2 { font-size: 24px; }
+}
+
+/* Form grid for compact two-column layout */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.form-grid .form-group {
+  margin-bottom: 0; /* spacing controlled by grid gap */
+}
+
+.col-span-2 {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 720px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .login-modal2 {
+    max-width: 100%;
+  }
 }

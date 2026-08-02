@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../services/firebase'
-import { collection, getDocs, query, orderBy, doc, updateDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, doc, updateDoc, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 import { useConfirmation } from '../context/ConfirmationContext'
 import { Bar, Pie } from 'react-chartjs-2'
@@ -32,6 +32,7 @@ import AdminProductsDashboard from '../components/AdminProductsDashboard'
 import AdminCategoriesDashboard from '../components/AdminCategoriesDashboard'
 import AdminSellerPerformance from '../components/AdminSellerPerformance'
 import AdminReports from '../components/AdminReports'
+import AdminRecycleBin from '../components/AdminRecycleBin'
 import { Toast } from '../components/Toast'
 
 ChartJS.register(
@@ -177,7 +178,7 @@ export function AdminOrdersDashboard() {
       })
 
       console.log('Updating local state')
-      setAllUsers(prev => prev.filter((user) => user.id !== userId))
+      setAllUsers(prev => prev.map((user) => user.id === userId ? { ...user, deleted: true, deletedAt: new Date() } : user))
       setToastMessage('User deleted successfully')
       setToastType('success')
     } catch (err) {
@@ -359,13 +360,89 @@ export function AdminOrdersDashboard() {
       onConfirm: async () => {
         try {
           const productRef = doc(db, 'products', productId)
-          await deleteDoc(productRef)
-          setAllProducts(prev => prev.filter(p => p.id !== productId))
+          await updateDoc(productRef, { deleted: true, deletedAt: new Date() })
+          setAllProducts(prev => prev.map(p => p.id === productId ? { ...p, deleted: true, deletedAt: new Date() } : p))
           setToastMessage('Product deleted successfully')
           setToastType('success')
         } catch (err) {
           console.error('Error deleting product:', err)
           setToastMessage('Failed to delete product: ' + err.message)
+          setToastType('error')
+        }
+      }
+    })
+  }
+
+  const handleRestoreUser = async (userId) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), { deleted: false, deletedAt: null, deletedBy: null, restoredAt: new Date() })
+      setAllUsers(prev => prev.map((user) => user.id === userId ? { ...user, deleted: false, deletedAt: null, deletedBy: null } : user))
+      setToastMessage('User restored successfully')
+      setToastType('success')
+    } catch (err) {
+      setToastMessage('Failed to restore user: ' + err.message)
+      setToastType('error')
+    }
+  }
+
+  const handleRestoreProduct = async (productId) => {
+    try {
+      await updateDoc(doc(db, 'products', productId), { deleted: false, deletedAt: null, deletedBy: null, restoredAt: new Date() })
+      setAllProducts(prev => prev.map((product) => product.id === productId ? { ...product, deleted: false, deletedAt: null, deletedBy: null } : product))
+      setToastMessage('Product restored successfully')
+      setToastType('success')
+    } catch (err) {
+      setToastMessage('Failed to restore product: ' + err.message)
+      setToastType('error')
+    }
+  }
+
+  const handlePermanentDeleteUser = async (userId) => {
+    openConfirmation({
+      title: 'Permanently delete user',
+      message: 'This action cannot be undone. Permanently delete this user so they cannot log in again? Are you sure?',
+      onConfirm: async () => {
+        try {
+          const userRef = doc(db, 'users', userId)
+          await updateDoc(userRef, {
+            deleted: true,
+            deletedAt: new Date(),
+            deletedBy: 'admin',
+            permanentlyDeleted: true,
+            updatedAt: new Date(),
+          })
+          setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, deleted: true, deletedAt: new Date(), deletedBy: 'admin', permanentlyDeleted: true } : u))
+          setToastMessage('User marked as permanently deleted (login blocked)')
+          setToastType('success')
+        } catch (err) {
+          console.error('Error permanently deleting user:', err)
+          setToastMessage('Failed to permanently delete user: ' + err.message)
+          setToastType('error')
+        }
+      }
+    })
+  }
+
+  const handlePermanentDeleteProduct = async (productId) => {
+    openConfirmation({
+      title: 'Permanently delete product',
+      message: 'This action cannot be undone. Permanently delete this product so it cannot be restored? Are you sure?',
+      onConfirm: async () => {
+        try {
+          const productRef = doc(db, 'products', productId)
+          await updateDoc(productRef, {
+            deleted: true,
+            deletedAt: new Date(),
+            deletedBy: 'admin',
+            permanentlyDeleted: true,
+            updatedAt: new Date(),
+          })
+          setAllProducts(prev => prev.map(p => p.id === productId ? { ...p, deleted: true, deletedAt: new Date(), deletedBy: 'admin', permanentlyDeleted: true } : p))
+          setToastMessage('Product marked as permanently deleted')
+          setToastType('success')
+        } catch (err) {
+          console.error('Error permanently deleting product:', err)
+          setToastMessage('Failed to permanently delete product: ' + err.message)
           setToastType('error')
         }
       }
@@ -718,28 +795,25 @@ export function AdminOrdersDashboard() {
                         const isLowStock = (product.stock || 0) <= (product.lowStockThreshold || 5)
                         return (
                           <div key={product.id} className="product-card" style={{ 
-                            background: '#fff', 
-                            borderRadius: '12px', 
-                            boxShadow: '0 2px 12px rgba(0,0,0,0.08)', 
-                            overflow: 'hidden',
-                            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-                          }}>
-                            <div className="product-image-container" style={{ position: 'relative', aspectRatio: '1', overflow: 'hidden', background: '#f5f5f5' }}>
-                              <img src={product.imageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              <div style={{
-                                position: 'absolute', top: '8px', right: '8px',
-                                padding: '4px 10px', borderRadius: '16px', fontSize: '12px', fontWeight: '600',
-                                background: isOutOfStock ? '#EF4444' : isLowStock ? '#F59E0B' : '#10B981',
-                                color: '#fff'
-                              }}>
-                                {isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock' : 'Healthy'}
-                              </div>
-                            </div>
-                            <div className="product-info" style={{ padding: '16px' }}>
+                                                      position: 'relative',
+                                                      background: '#fff', 
+                                                      borderRadius: '12px', 
+                                                      boxShadow: '0 2px 12px rgba(0,0,0,0.08)', 
+                                                      overflow: 'hidden',
+                                                      transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                                                    }}>
+                                                      <div className="product-image-container" style={{ aspectRatio: '1', overflow: 'hidden', background: '#f5f5f5' }}>
+                                                        <img src={product.imageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                      </div>
+                                                      <div className={`status-pill ${isOutOfStock ? 'out' : isLowStock ? 'low' : 'active'}`}>
+                                                        <div className="dot" />
+                                                        {isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock' : 'Healthy'}
+                                                      </div>
+                                                      <div className="product-info" style={{ padding: '16px' }}>
                               <h3 style={{ fontSize: '15px', fontWeight: '600', margin: '0 0 8px 0', color: '#1f2937' }}>{product.name}</h3>
                               <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 8px 0' }}>Seller: {product.storeName || 'N/A'}</p>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                                <span style={{ fontSize: '16px', fontWeight: '700', color: '#1f2937' }}>{formatPrice(product.price)}</span>
+                                <span className="price-value">{formatPrice(product.price)}</span>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   <span style={{ fontSize: '13px', color: '#6b7280' }}>Stock:</span>
                                   <input 
@@ -758,35 +832,10 @@ export function AdminOrdersDashboard() {
                                 </div>
                               </div>
                               <div style={{ display: 'flex', gap: '8px' }}>
-                                <button 
-                                  style={{ 
-                                    flex: 1, 
-                                    padding: '8px 12px', 
-                                    border: 'none', 
-                                    borderRadius: '8px', 
-                                    background: '#3b82f6', 
-                                    color: '#fff', 
-                                    fontSize: '13px', 
-                                    fontWeight: '500',
-                                    cursor: 'pointer'
-                                  }}
-                                  onClick={() => handleAdminEditProduct(product.id, product)}
-                                >
+                                <button className="btn btn-primary btn-full btn-small" onClick={() => handleAdminEditProduct(product.id, product)}>
                                   Edit
                                 </button>
-                                <button 
-                                  style={{ 
-                                    padding: '8px 12px', 
-                                    border: 'none', 
-                                    borderRadius: '8px', 
-                                    background: '#EF4444', 
-                                    color: '#fff', 
-                                    fontSize: '13px', 
-                                    fontWeight: '500',
-                                    cursor: 'pointer'
-                                  }}
-                                  onClick={() => handleAdminDeleteProduct(product.id)}
-                                >
+                                <button className="btn btn-danger btn-small" onClick={() => handleAdminDeleteProduct(product.id)}>
                                   <Trash2 size={16} />
                                 </button>
                               </div>
@@ -867,6 +916,23 @@ export function AdminOrdersDashboard() {
             <>
               {renderViewHeader('Store Reports', 'Review and manage user-submitted store reports')}
               <AdminReports />
+            </>
+          )}
+
+          {activeView === 'recycle-bin' && (
+            <>
+              {renderViewHeader('Recycle Bin', 'Restore deleted users and products')}
+              <div style={{ padding: '24px' }}>
+                <AdminRecycleBin
+                  users={allUsers}
+                  products={allProducts}
+                  onRestoreUser={handleRestoreUser}
+                  onRestoreProduct={handleRestoreProduct}
+                  onPermanentDeleteUser={handlePermanentDeleteUser}
+                  onPermanentDeleteProduct={handlePermanentDeleteProduct}
+                  formatDate={formatDate}
+                />
+              </div>
             </>
           )}
         </div>

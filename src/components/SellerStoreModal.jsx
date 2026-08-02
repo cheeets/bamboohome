@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { ProductDetailsModal } from './ProductDetailsModal'
 import { rateStore, calculateAverageRating, formatPrice } from '../utils/rating'
-import { ArrowLeft, MessageCircle, ShoppingCart, User, X } from 'lucide-react'
+import { ArrowLeft, MapPin, MessageCircle, Phone, ShoppingCart, User, X } from 'lucide-react'
 import { Toast } from './Toast'
 import '../css/SellerStoreModal.css'
 
@@ -163,6 +163,10 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
 
   const averageRating = calculateAverageRating(sellerData?.storeRatings)
   const displayStorePhoto = sellerData?.storePhotoUrl || storePhotoUrl
+  const sellerLocation = [sellerData?.barangay && `Barangay ${sellerData.barangay}`, sellerData?.municipality || 'Pinamungajan', 'Cebu']
+    .filter(Boolean)
+    .join(', ')
+  const sellerMapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sellerLocation)}`
 
   // Use all categories from admin
   const storeCategories = [
@@ -215,14 +219,27 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
             <div className="shopee-header-overlay"></div>
           </div>
           <div className="shopee-store-info">
-            <div className="shopee-store-avatar">
-              {displayStorePhoto ? (
-                <img src={displayStorePhoto} alt={storeName} />
-              ) : (
-                <div className="shopee-avatar-placeholder">
-                  <User size={42} />
-                </div>
-              )}
+            <div className="shopee-store-profile">
+              <div className="shopee-store-avatar">
+                {displayStorePhoto ? (
+                  <img src={displayStorePhoto} alt={storeName} />
+                ) : (
+                  <div className="shopee-avatar-placeholder">
+                    <User size={42} />
+                  </div>
+                )}
+              </div>
+              <div className="seller-contact-card">
+                <span className="seller-contact-name">{sellerData?.name || 'Seller information unavailable'}</span>
+                {sellerData?.contactNumber && (
+                  <a className="seller-contact-link" href={`tel:${sellerData.contactNumber}`}>
+                    <Phone size={14} /> {sellerData.contactNumber}
+                  </a>
+                )}
+                <a className="seller-contact-link seller-map-link" href={sellerMapUrl} target="_blank" rel="noreferrer">
+                  <MapPin size={14} /> View on map
+                </a>
+              </div>
             </div>
             <div className="shopee-store-details">
               <h2 className="shopee-store-name">{storeName}</h2>

@@ -15,7 +15,8 @@ import {
   X,
   Tag,
   Award,
-  Flag
+  Flag,
+  Trash2
 } from 'lucide-react'
 import '../css/AdminSidebar.css'
 
@@ -153,6 +154,14 @@ export default function AdminSidebar({ activeView, setActiveView, activeSubView,
                   {pendingReportCount}
                 </span>
               )}
+            </button>
+
+            <button
+              className={`nav-item ${activeView === 'recycle-bin' ? 'active' : ''}`}
+              onClick={() => handleNavigation('recycle-bin')}
+              title="Recycle Bin"
+            >
+              <Trash2 size={16} /> Recycle Bin
             </button>
           </div>
         </nav>

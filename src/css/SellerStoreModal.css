@@ -134,6 +134,43 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
+.shopee-store-profile {
+  width: 180px;
+  flex-shrink: 0;
+}
+
+.seller-contact-card {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #4b5563;
+  font-size: 0.82rem;
+}
+
+.seller-contact-name {
+  color: #1f2937;
+  font-weight: 700;
+}
+
+.seller-contact-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #1b5e20;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.seller-contact-link:hover {
+  color: #0f3d14;
+  text-decoration: underline;
+}
+
+.seller-map-link {
+  font-weight: 600;
+}
+
 .shopee-store-avatar img {
   width: 100%;
   height: 100%;
@@ -468,6 +505,14 @@
     align-items: center;
     text-align: center;
     margin-top: -80px;
+  }
+
+  .shopee-store-profile {
+    width: min(100%, 260px);
+  }
+
+  .seller-contact-card {
+    align-items: center;
   }
   
   .shopee-store-details { padding-top: 20px; }

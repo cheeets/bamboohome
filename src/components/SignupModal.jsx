@@ -13,6 +13,7 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
   const [municipality, setMunicipality] = useState('')
   const [barangay, setBarangay] = useState('')
   const [storeName, setStoreName] = useState('')
+  const [sellerPhoneNumber, setSellerPhoneNumber] = useState('')
   const [storePhotoUrl, setStorePhotoUrl] = useState('')
   const [storePhotoFile, setStorePhotoFile] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
@@ -100,6 +101,7 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
     e.preventDefault()
     setError('')
 
+    // Enforce municipality/barangay checks for all registrations (buyer and seller)
     if (municipality !== 'Pinamungajan') {
       setError('bamboo home is currently not available in your province or city')
       return
@@ -108,6 +110,22 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
     if (!PINAMUNGAJAN_BARANGAYS.includes(barangay)) {
       setError('Please select Pinamungajan and a valid barangay to register.')
       return
+    }
+
+    // Seller-specific validation
+    if (role === 'seller') {
+      if (!/^(?:09\d{9}|\+639\d{9})$/.test(sellerPhoneNumber)) {
+        setError('Enter a valid seller contact number: 09XXXXXXXXX or +639XXXXXXXXX.')
+        return
+      }
+      if (!storePhotoUrl) {
+        setError('Please choose a store image for your store.')
+        return
+      }
+      if (!storeName || storeName.trim().length < 2) {
+        setError('Please enter a valid store name.')
+        return
+      }
     }
 
     setLoading(true)
@@ -122,6 +140,7 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
         role === 'seller' ? storePhotoUrl : '',
         municipality,
         barangay,
+        role === 'seller' ? sellerPhoneNumber : '',
       )
       setName('')
       setEmail('')
@@ -129,6 +148,7 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
       setMunicipality('')
       setBarangay('')
       setStoreName('')
+      setSellerPhoneNumber('')
       setStorePhotoUrl('')
       setPhotoPreview(null)
       onClose()
@@ -146,6 +166,7 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
     setMunicipality('')
     setBarangay('')
     setStoreName('')
+    setSellerPhoneNumber('')
     setStorePhotoUrl('')
     setPhotoPreview(null)
     setRole('user')
@@ -165,7 +186,8 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
           
           {error && <div className="error-message">{error}</div>}
           <form onSubmit={handleSubmit}>
-            <div className="form-group">
+            
+              <div className="form-group">
               <label htmlFor="name">Full Name</label>
               <input
                 type="text"
@@ -188,46 +210,46 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
                 <option value="seller">Seller</option>
               </select>
             </div>
-            <div className="form-group">
-              <label htmlFor="municipality">City or Municipality</label>
-              <select
-                id="municipality"
-                value={municipality}
-                onChange={(e) => {
-                  const selectedMunicipality = e.target.value
-                  setMunicipality(selectedMunicipality)
-                  setBarangay('')
-                  setError(
-                    selectedMunicipality && selectedMunicipality !== 'Pinamungajan'
-                      ? 'bamboo home is currently not available in your province or city'
-                      : ''
-                  )
-                }}
-                className="role-select-input"
-                required
-              >
-                <option value="">Select city or municipality</option>
-                {CEBU_CITIES_AND_MUNICIPALITIES.map((location) => (
-                  <option key={location} value={location}>{location}</option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <label htmlFor="barangay">Barangay</label>
-              <select
-                id="barangay"
-                value={barangay}
-                onChange={(e) => setBarangay(e.target.value)}
-                className="role-select-input"
-                disabled={municipality !== 'Pinamungajan'}
-                required
-              >
-                <option value="">Select barangay</option>
-                {PINAMUNGAJAN_BARANGAYS.map((barangayName) => (
-                  <option key={barangayName} value={barangayName}>{barangayName}</option>
-                ))}
-              </select>
-            </div>
+                <div className="form-group">
+                  <label htmlFor="municipality">City or Municipality</label>
+                  <select
+                    id="municipality"
+                    value={municipality}
+                    onChange={(e) => {
+                      const selectedMunicipality = e.target.value
+                      setMunicipality(selectedMunicipality)
+                      setBarangay('')
+                      setError(
+                        selectedMunicipality && selectedMunicipality !== 'Pinamungajan'
+                          ? 'bamboo home is currently not available in your province or city'
+                          : ''
+                      )
+                    }}
+                    className="role-select-input"
+                    required
+                  >
+                    <option value="">Select city or municipality</option>
+                    {CEBU_CITIES_AND_MUNICIPALITIES.map((location) => (
+                      <option key={location} value={location}>{location}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="barangay">Barangay</label>
+                  <select
+                    id="barangay"
+                    value={barangay}
+                    onChange={(e) => setBarangay(e.target.value)}
+                    className="role-select-input"
+                    disabled={municipality !== 'Pinamungajan'}
+                    required
+                  >
+                    <option value="">Select barangay</option>
+                    {PINAMUNGAJAN_BARANGAYS.map((barangayName) => (
+                      <option key={barangayName} value={barangayName}>{barangayName}</option>
+                    ))}
+                  </select>
+                </div>
             {role === 'seller' && (
               <>
                 <div className="form-group">
@@ -242,36 +264,38 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="storePhoto">Store Photo / Logo *</label>
-                  <div
-                    className={`upload-dropzone ${isDragOver ? 'drag-over' : ''}`}
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={(e) => {
-                      e.preventDefault()
-                      setIsDragOver(true)
-                    }}
-                    onDragLeave={() => setIsDragOver(false)}
-                    onDrop={handleDrop}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        fileInputRef.current?.click()
-                      }
-                    }}
-                  >
-                    <div className="upload-dropzone-icon">
-                      <UploadCloud size={26} />
+                  <label htmlFor="sellerPhoneNumber">Seller Contact Number *</label>
+                  <input
+                    type="tel"
+                    id="sellerPhoneNumber"
+                    value={sellerPhoneNumber}
+                    onChange={(e) => setSellerPhoneNumber(e.target.value.replace(/(?!^\+)\D/g, '').slice(0, 13))}
+                    required
+                    inputMode="tel"
+                    maxLength="13"
+                    placeholder="09XXXXXXXXX or +639XXXXXXXXX"
+                    pattern="(?:09[0-9]{9}|\\+639[0-9]{9})"
+                    title="Use 09XXXXXXXXX or +639XXXXXXXXX."
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Choose image *</label>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                      <button type="button" className="btn btn-outline" onClick={() => fileInputRef.current?.click()}>Choose image</button>
+                      <span style={{ color: '#6b7280', fontSize: 13 }}>PNG, JPG, or WEBP recommended</span>
                     </div>
-                    <p className="upload-dropzone-title">Upload your store logo</p>
-                    <p className="upload-dropzone-text">
-                      Click to choose an image or drag and drop it here
-                    </p>
-                    <span className="upload-dropzone-hint">PNG, JPG, or WEBP recommended</span>
-                  </div>
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    required={!storePhotoUrl}
+                    ref={fileInputRef}
+                    style={{ display: 'none' }}
+                  />
+
                   {photoPreview && (
-                    <div className="photo-preview-container">
+                    <div className="photo-preview-container" style={{ marginTop: 12 }}>
                       <div className="photo-preview-header">
                         <div className="photo-preview-title">
                           <ImagePlus size={16} />
@@ -284,9 +308,7 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
                             setPhotoPreview(null)
                             setStorePhotoUrl('')
                             setStorePhotoFile(null)
-                            if (fileInputRef.current) {
-                              fileInputRef.current.value = ''
-                            }
+                            if (fileInputRef.current) fileInputRef.current.value = ''
                           }}
                         >
                           Remove Photo
@@ -298,15 +320,6 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
                       )}
                     </div>
                   )}
-                  <input
-                    type="file"
-                    id="storePhoto"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    required={!storePhotoUrl}
-                    className="file-input"
-                    ref={fileInputRef}
-                  />
                 </div>
               </>
             )}
@@ -332,9 +345,11 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin }) {
                 placeholder="Enter your password (min 6 characters)"
               />
             </div>
-            <button type="submit" disabled={loading} className="btn btn-primary btn-full">
-              {loading ? 'Creating account...' : 'Sign Up'}
-            </button>
+            <div className="form-group">
+              <button type="submit" disabled={loading} className="btn btn-primary btn-full">
+                {loading ? 'Creating account...' : 'Sign Up'}
+              </button>
+            </div>
           </form>
           <p className="modal-footer">
             Already have an account? <a href="#" onClick={(e) => { e.preventDefault(); handleClose(); onSwitchToLogin(); }}>Login here</a>

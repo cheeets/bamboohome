@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../services/firebase'
-import { doc, deleteDoc } from 'firebase/firestore'
+import { doc, updateDoc } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { useConfirmation } from '../context/ConfirmationContext'
@@ -35,7 +35,10 @@ export function ProductCard({ product, onProductUpdated, onEditProduct, onViewDe
       onConfirm: async () => {
         try {
           setDeleting(true)
-          await deleteDoc(doc(db, 'products', product.id))
+          await updateDoc(doc(db, 'products', product.id), {
+            deleted: true,
+            deletedAt: new Date(),
+          })
           if (onProductUpdated) {
             onProductUpdated()
           }
@@ -75,6 +78,23 @@ export function ProductCard({ product, onProductUpdated, onEditProduct, onViewDe
     addToCart(product, buyQuantity)
     setToastMessage(`Added ${product.name} to cart`)
     setToastType('success')
+  }
+
+  const handleBuyNow = (e) => {
+    e.stopPropagation()
+    if (!user) {
+      setToastMessage('Please login to buy this product')
+      setToastType('info')
+      navigate('/')
+      return
+    }
+
+    if (userRole === 'seller' || userRole === 'admin' || maxStock <= 0) {
+      return
+    }
+
+    addToCart(product, 1)
+    navigate('/checkout')
   }
 
   const isShopVariant = variant === 'shop'
@@ -137,7 +157,7 @@ export function ProductCard({ product, onProductUpdated, onEditProduct, onViewDe
               <button
                 type="button"
                 className="btn-buy"
-                onClick={handleAddToCart}
+                onClick={handleBuyNow}
                 disabled={maxStock <= 0}
               >
                 {maxStock <= 0 ? 'Sold Out' : 'Buy'}

@@ -161,6 +161,17 @@ body,
   transform: translateY(-1px);
 }
 
+.btn-danger {
+  background: var(--danger-color);
+  color: var(--white);
+  box-shadow: 0 4px 12px rgba(211, 47, 47, 0.16);
+}
+
+.btn-danger:hover {
+  background: #b71c1c; /* darker red */
+  transform: translateY(-1px);
+}
+
 .btn-accent {
   background: var(--accent-green);
   color: var(--white);

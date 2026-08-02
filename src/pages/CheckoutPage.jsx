@@ -9,6 +9,16 @@ import { formatPrice } from '../utils/rating'
 import { createNotification } from '../services/notificationService'
 import '../css/CheckoutPage.css'
 
+const PINAMUNGAJAN_BARANGAYS = [
+  'Anislag', 'Anopog', 'Binabag', 'Buhingtubig', 'Busay', 'Butong', 'Cabiangon',
+  'Camugao', 'Duangan', 'Guimbawian', 'Lamac', 'Lut-od', 'Mangoto', 'Opao',
+  'Pandacan', 'Poblacion', 'Punod', 'Rizal', 'Sacsac', 'Sambagon', 'Sibago',
+  'Tajao', 'Tangub', 'Tanibag', 'Tupas', 'Tutay',
+]
+
+const PHILIPPINE_MOBILE_PATTERN = /^(?:09\d{9}|\+639\d{9})$/
+const FULL_NAME_PATTERN = /^[\p{L}]+(?:[ '\-][\p{L}]+)+$/u
+
 export function CheckoutPage() {
   const navigate = useNavigate()
   const { cart, getTotalPrice, clearCart, updateQuantity, updateItemPrice } = useCart()
@@ -80,7 +90,8 @@ export function CheckoutPage() {
   const [formData, setFormData] = useState({
     fullName: '',
     phoneNumber: '',
-    addressLine: '',
+    barangay: '',
+    addressDetails: '',
     notes: '',
     paymentMethod: 'Cash On Delivery',
   })
@@ -137,9 +148,15 @@ export function CheckoutPage() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
+    const nextValue = name === 'fullName'
+      ? value.replace(/\d/g, '')
+      : name === 'phoneNumber'
+        ? value.replace(/(?!^\+)\D/g, '').slice(0, 13)
+        : value
+
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: nextValue,
     }))
   }
 
@@ -153,10 +170,31 @@ export function CheckoutPage() {
       return
     }
 
-    if (!formData.fullName.trim() || !formData.phoneNumber.trim() || !formData.addressLine.trim()) {
+    const fullName = formData.fullName.trim().replace(/\s+/g, ' ')
+    const phoneNumber = formData.phoneNumber.trim()
+    const addressDetails = formData.addressDetails.trim()
+
+    if (!fullName || !phoneNumber || !formData.barangay || !addressDetails) {
       setError('Please enter your full delivery details.')
       return
     }
+
+    if (!FULL_NAME_PATTERN.test(fullName)) {
+      setError('Enter your full name using letters only (for example, Maria Santos).')
+      return
+    }
+
+    if (!PHILIPPINE_MOBILE_PATTERN.test(phoneNumber)) {
+      setError('Enter a valid Philippine mobile number: 09XXXXXXXXX or +639XXXXXXXXX.')
+      return
+    }
+
+    if (!PINAMUNGAJAN_BARANGAYS.includes(formData.barangay)) {
+      setError('Please choose a delivery barangay in Pinamungajan only.')
+      return
+    }
+
+    const addressLine = `${addressDetails}, Barangay ${formData.barangay}, Pinamungajan, Cebu 6039`
 
     setLoading(true)
 
@@ -251,9 +289,9 @@ export function CheckoutPage() {
             items: products,
             totalAmount,
             address: {
-              fullName: formData.fullName.trim(),
-              phoneNumber: formData.phoneNumber.trim(),
-              addressLine: formData.addressLine.trim(),
+              fullName,
+              phoneNumber,
+              addressLine,
               notes: (formData.notes || '').trim(),
             },
             paymentMethod: formData.paymentMethod,
@@ -273,7 +311,7 @@ export function CheckoutPage() {
           const orderId = sellerOrderRef.id
           const itemCount = itemsForSeller.reduce((sum, it) => sum + (it.quantity || 1), 0)
           const orderTotal = itemsForSeller.reduce((sum, it) => sum + (it.price || 0) * (it.quantity || 1), 0)
-          const buyerNameText = formData.fullName.trim() || user?.email?.split('@')[0] || 'A buyer'
+          const buyerNameText = fullName || user?.email?.split('@')[0] || 'A buyer'
           await createNotification(
             sellerId,
             `${buyerNameText} placed a new order (${itemCount} item${itemCount > 1 ? 's' : ''}) for ${formatPrice(orderTotal)}.`,
@@ -441,7 +479,11 @@ export function CheckoutPage() {
                       name="fullName"
                       value={formData.fullName}
                       onChange={handleInputChange}
-                      placeholder="Enter your full name"
+                      placeholder="e.g., Maria Santos"
+                      autoComplete="name"
+                      maxLength="80"
+                      pattern="[A-Za-zÀ-ÖØ-öø-ÿ' -]+"
+                      title="Use letters only and enter your first and last name."
                       required
                     />
                   </div>
@@ -452,20 +494,41 @@ export function CheckoutPage() {
                       name="phoneNumber"
                       value={formData.phoneNumber}
                       onChange={handleInputChange}
-                      placeholder="Enter your phone number"
+                      placeholder="09XXXXXXXXX or +639XXXXXXXXX"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      maxLength="13"
+                      pattern="(?:09[0-9]{9}|\\+639[0-9]{9})"
+                      title="Use 09XXXXXXXXX or +639XXXXXXXXX."
                       required
                     />
                   </div>
                   <div className="form-group">
-                    <label>Delivery Address</label>
-                    <textarea
-                      name="addressLine"
-                      value={formData.addressLine}
+                    <label>Delivery Barangay</label>
+                    <select
+                      name="barangay"
+                      value={formData.barangay}
                       onChange={handleInputChange}
-                      placeholder="Enter your full address"
+                      required
+                    >
+                      <option value="" disabled>Select a barangay in Pinamungajan</option>
+                      {PINAMUNGAJAN_BARANGAYS.map((barangay) => (
+                        <option key={barangay} value={barangay}>{barangay}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>House Number, Street, and Purok</label>
+                    <textarea
+                      name="addressDetails"
+                      value={formData.addressDetails}
+                      onChange={handleInputChange}
+                      placeholder="e.g., Purok 2, Rizal Street, House 15"
                       rows="4"
+                      autoComplete="street-address"
                       required
                     ></textarea>
+                    <small className="delivery-address-note">Delivery is available within Pinamungajan, Cebu only.</small>
                   </div>
                   <div className="form-group">
                     <label>Order Notes (Optional)</label>

@@ -30,36 +30,39 @@ service cloud.firestore {
         && request.resource.data.role in ['user', 'seller']
         && request.resource.data.email is string
         && request.resource.data.name is string;
+
+      // Updates are allowed when:
+      // - an admin (full override), OR
+      // - the account owner updating their profile (but not toggling deleted except to perform a constrained soft-delete), OR
+      // - a buyer writing storeRatings to a seller's profile (existing behavior)
       allow update: if isAdmin()
-        || (request.auth.uid == userId
-            && request.resource.data.uid == resource.data.uid
-            && request.resource.data.email == resource.data.email
-            && request.resource.data.role == resource.data.role
-            && request.resource.data.name is string
-            && !('deleted' in request.resource.data)
-            && !('deletedAt' in request.resource.data)
-            && (
-              (
-                !('isSuspended' in request.resource.data)
-                && !('suspensionReason' in request.resource.data)
-                && !('suspendedAt' in request.resource.data)
-                && !('suspensionEndAt' in request.resource.data)
-                && !('suspensionDuration' in request.resource.data)
-                && !('suspensionUnit' in request.resource.data)
-              )
-              || (
-                request.resource.data.isSuspended == false
-                && request.resource.data.suspensionReason == null
-                && request.resource.data.suspendedAt == null
-                && request.resource.data.suspensionEndAt == null
-                && request.resource.data.suspensionDuration == null
-                && request.resource.data.suspensionUnit == null
-              )
-            ))
-        // Allow only buyers (user role) to update storeRatings
+        || (
+          request.auth.uid == userId
+          // basic ownership sanity checks
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.name is string
+          && (
+            // Owner performing a constrained soft-delete: set deleted=true and provide deletedAt timestamp, and change ONLY these keys
+            (
+              request.resource.data.deleted == true
+              && request.resource.data.deletedAt is timestamp
+              && request.resource.data.deletedBy == 'user'
+              // Only the changed keys may be 'deleted', 'deletedAt', and 'deletedBy' (use diff.changedKeys)
+              && request.resource.data.diff(resource.data).changedKeys().hasOnly(['deleted', 'deletedAt', 'deletedBy'])
+            )
+            ||
+            // Owner updating profile fields but NOT touching the deleted flag
+            (request.resource.data.deleted == resource.data.deleted)
+          )
+        )
+        // Allow only buyers (user role) to update storeRatings on other user docs
         || (isUser()
             && request.auth.uid != userId
             && ('storeRatings' in request.resource.data));
+
+      // Prevent clients from performing hard deletes; only admins (or server-side processes) can remove documents entirely.
       allow delete: if isAdmin();
     }
 

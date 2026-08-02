@@ -110,6 +110,22 @@ export function AuthProvider({ children }) {
 
           if (userDocSnap.exists()) {
             const data = userDocSnap.data()
+
+            // If the user has been soft-deleted, immediately sign them out and do not set app state
+            if (data.deleted) {
+              console.warn('User account is marked deleted in Firestore — signing out:', currentUser.uid)
+              await signOut(auth)
+              setUser(null)
+              setUserRole(null)
+              setUserName('')
+              setStoreName('')
+              setStorePhotoUrl('')
+              setIsSuspended(false)
+              setSuspensionReason('')
+              setSuspensionEndAt(null)
+              setLoading(false)
+              return
+            }
             
             // Check if suspension has expired
             const wasAutoUnsuspended = await checkAndAutoUnsuspend(currentUser.uid, data)
@@ -169,6 +185,7 @@ export function AuthProvider({ children }) {
     sellerStorePhotoUrl = '',
     municipality = '',
     barangay = '',
+    sellerPhoneNumber = '',
   ) => {
     try {
       // Normalize values
@@ -176,6 +193,7 @@ export function AuthProvider({ children }) {
       const normalizedName = name?.trim() || ''
       const normalizedMunicipality = municipality?.trim() || ''
       const normalizedBarangay = barangay?.trim() || ''
+      const normalizedSellerPhoneNumber = sellerPhoneNumber?.trim() || ''
 
       if (!normalizedName) {
         throw new Error('Name is required.')
@@ -189,12 +207,19 @@ export function AuthProvider({ children }) {
         throw new Error('Store photo is required for sellers.')
       }
 
-      if (normalizedMunicipality !== 'Pinamungajan') {
-        throw new Error('bamboo home is currently not available in your province or city')
+      if (normalizedRole === 'seller' && !/^(?:09\d{9}|\+639\d{9})$/.test(normalizedSellerPhoneNumber)) {
+        throw new Error('A valid seller contact number is required.')
       }
 
-      if (!PINAMUNGAJAN_BARANGAYS.includes(normalizedBarangay)) {
-        throw new Error('Please select Pinamungajan and a valid barangay to register.')
+      // Only enforce municipality/barangay for non-seller registrations
+      if (normalizedRole !== 'seller') {
+        if (normalizedMunicipality !== 'Pinamungajan') {
+          throw new Error('bamboo home is currently not available in your province or city')
+        }
+
+        if (!PINAMUNGAJAN_BARANGAYS.includes(normalizedBarangay)) {
+          throw new Error('Please select Pinamungajan and a valid barangay to register.')
+        }
       }
 
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
@@ -208,6 +233,7 @@ export function AuthProvider({ children }) {
         role: normalizedRole,
         storeName: normalizedRole === 'seller' ? sellerStoreName.trim() : null,
         storePhotoUrl: normalizedRole === 'seller' ? sellerStorePhotoUrl : null,
+        contactNumber: normalizedRole === 'seller' ? normalizedSellerPhoneNumber : null,
         municipality: normalizedMunicipality,
         barangay: normalizedBarangay,
         createdAt: serverTimestamp(),
@@ -242,20 +268,30 @@ export function AuthProvider({ children }) {
       if (userDocSnap.exists()) {
         const data = userDocSnap.data()
         console.log('✓ Firestore User Data:', JSON.stringify(data))
-        
+      
+        // Prevent login if account is soft-deleted
+        if (data.deleted) {
+          console.warn('Attempted login to deleted account:', currentUser.uid)
+          // Sign out the firebase auth session that was just created and return an error to caller
+          await signOut(auth)
+          const err = new Error('This account has been deleted. If you believe this is an error, contact support.')
+          err.code = 'auth/account-deleted'
+          throw err
+        }
+      
         if (!data.role) {
           console.error('❌ WARNING: User document has NO role field!', data)
         }
-        
+      
         const userRole = data.role?.toLowerCase() || 'user'
         console.log('✓ User role:', userRole)
-        
+      
         setUser(currentUser)
         setUserRole(userRole)
         setUserName(data.name || data.displayName || '')
         setStoreName(data.storeName || '')
         setStorePhotoUrl(data.storePhotoUrl || '')
-        
+      
         // Return user and role for immediate use in components
         return { user: currentUser, role: userRole }
       } else {

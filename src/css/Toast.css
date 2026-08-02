@@ -6,7 +6,8 @@
   border-radius: var(--radius-lg);
   padding: 16px 20px;
   box-shadow: var(--shadow-lg);
-  z-index: 1000;
+  /* Keep feedback visible above dialogs and their backdrop. */
+  z-index: 4000;
   animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1), slideOutDown 0.4s cubic-bezier(0.4, 0, 0.2, 1) 2.6s forwards;
   max-width: 380px;
   border-left: 4px solid transparent;
@@ -116,7 +117,8 @@
 /* Responsive */
 @media (max-width: 768px) {
   .toast {
-    bottom: 16px;
+    top: max(16px, env(safe-area-inset-top));
+    bottom: auto;
     right: 16px;
     left: 16px;
     max-width: none;

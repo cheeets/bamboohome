@@ -1,0 +1,131 @@
+[debug] [2026-07-31T13:47:31.939Z] ----------------------------------------------------------------------
+[debug] [2026-07-31T13:47:31.943Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\emell\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting
+[debug] [2026-07-31T13:47:31.944Z] CLI Version:   15.24.0
+[debug] [2026-07-31T13:47:31.944Z] Platform:      win32
+[debug] [2026-07-31T13:47:31.945Z] Node Version:  v24.13.0
+[debug] [2026-07-31T13:47:31.947Z] Detected Agent: codex_cli
+[debug] [2026-07-31T13:47:31.948Z] Time:          Fri Jul 31 2026 21:47:31 GMT+0800 (Philippine Standard Time)
+[debug] [2026-07-31T13:47:31.948Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-07-31T13:47:31.970Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-07-31T13:47:40.036Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-07-31T13:47:40.036Z] > authorizing via signed-in user (lacangchito@gmail.com)
+[debug] [2026-07-31T13:47:40.036Z] [iam] checking project greennest-7e7bc for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-07-31T13:47:40.038Z] Checked if tokens are valid: false, expires at: 1785244006501
+[debug] [2026-07-31T13:47:40.039Z] Checked if tokens are valid: false, expires at: 1785244006501
+[debug] [2026-07-31T13:47:40.040Z] > refreshing access token with scopes: []
+[debug] [2026-07-31T13:47:40.042Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-07-31T13:47:40.043Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-07-31T13:47:40.240Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-07-31T13:47:40.240Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-07-31T13:47:40.261Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/greennest-7e7bc:testIamPermissions [none]
+[debug] [2026-07-31T13:47:40.261Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/greennest-7e7bc:testIamPermissions  x-goog-user-project=greennest-7e7bc
+[debug] [2026-07-31T13:47:40.262Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/greennest-7e7bc:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-07-31T13:47:40.532Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-07-31T13:47:40.532Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-07-31T13:47:40.856Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/greennest-7e7bc:testIamPermissions 200
+[debug] [2026-07-31T13:47:40.856Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/greennest-7e7bc:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-07-31T13:47:40.857Z] Checked if tokens are valid: true, expires at: 1785509259240
+[debug] [2026-07-31T13:47:40.857Z] Checked if tokens are valid: true, expires at: 1785509259240
+[debug] [2026-07-31T13:47:40.858Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/greennest-7e7bc [none]
+[debug] [2026-07-31T13:47:41.351Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/greennest-7e7bc 200
+[debug] [2026-07-31T13:47:41.352Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/greennest-7e7bc {"projectId":"greennest-7e7bc","projectNumber":"84219699619","displayName":"greennest","name":"projects/greennest-7e7bc","resources":{"hostingSite":"greennest-7e7bc"},"state":"ACTIVE","labels":{"firebase":"enabled"},"etag":"1_a1ee3df5-ec4c-4689-839f-df56a2e92dc7"}
+[info] 
+[info] === Deploying to 'greennest-7e7bc'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-07-31T13:47:41.358Z] Checked if tokens are valid: true, expires at: 1785509259240
+[debug] [2026-07-31T13:47:41.358Z] Checked if tokens are valid: true, expires at: 1785509259240
+[debug] [2026-07-31T13:47:41.359Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/greennest-7e7bc/sites/bamboo-home [none]
+[debug] [2026-07-31T13:47:42.172Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/greennest-7e7bc/sites/bamboo-home 200
+[debug] [2026-07-31T13:47:42.172Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/greennest-7e7bc/sites/bamboo-home {"name":"projects/greennest-7e7bc/sites/bamboo-home","defaultUrl":"https://bamboo-home.web.app","type":"USER_SITE"}
+[debug] [2026-07-31T13:47:42.179Z] Checked if tokens are valid: true, expires at: 1785509259240
+[debug] [2026-07-31T13:47:42.180Z] Checked if tokens are valid: true, expires at: 1785509259240
+[debug] [2026-07-31T13:47:42.182Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/bamboo-home/versions [none]
+[debug] [2026-07-31T13:47:42.182Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/bamboo-home/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-07-31T13:47:43.393Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/bamboo-home/versions 200
+[debug] [2026-07-31T13:47:43.393Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/bamboo-home/versions {"name":"projects/84219699619/sites/bamboo-home/versions/217dbf7b5a36290a","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[bamboo-home]: beginning deploy... 
+[info] i  hosting[bamboo-home]: found 10 files in dist 
+[debug] [2026-07-31T13:47:43.408Z] [hosting] uploading with 200 concurrency
+[debug] [2026-07-31T13:47:43.487Z] Checked if tokens are valid: true, expires at: 1785509259240
+[debug] [2026-07-31T13:47:43.487Z] Checked if tokens are valid: true, expires at: 1785509259240
+[debug] [2026-07-31T13:47:43.489Z] [hosting] hash cache [ZGlzdA] stored for 10 files
+[debug] [2026-07-31T13:47:43.490Z] [hosting][hash queue][FINAL] {"max":72,"min":5,"avg":21,"active":0,"complete":10,"success":10,"errored":0,"retried":0,"total":10,"elapsed":80}
+[debug] [2026-07-31T13:47:43.490Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/84219699619/sites/bamboo-home/versions/217dbf7b5a36290a:populateFiles [none]
+[debug] [2026-07-31T13:47:43.491Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/84219699619/sites/bamboo-home/versions/217dbf7b5a36290a:populateFiles {"files":{"/manifest.json":"79dd5942d2db7c295fb2a8a22a3c5fc41cc3cf26388a49485ec2abeb971934e5\r","/assets/vendor-icons-Cu0yP84p.js":"3079616551623bb0810ae6dc52616d3d5192a6de5989b0ce115a44c024b58119","/index.html":"5724b6e97313bb09dffb18a03528f8887e43cd76e08d7bba63bcd3f4091618c5","/assets/index-BuqwAVQw.css":"19720a0c39d4943c4b60a2a0a7357bca22e3d39f862ae3917f39875a14d1c367","/assets/vendor-react-C-abPITq.js":"f34748d3209f7ede01b9417b1f89fde917194ac2e16bf1f99313a75c4def843a","/assets/index-lV3-c2Bb.js":"2176a9f2d105d30af31c2044da005e820239764c7cf85a9c48098072bf229a62","/assets/vendor-charts-BVh0GEL3.js":"2762d084a30fb5daa19eba4de78c9a924f8ab6297a8193344a6758aee51e3693","/assets/vendor-firebase-CAZeXuRy.js":"468a61219bfc6d6d081a7f34eb0b372fdfa8c89d751e339367b0379ed5f85462","/assets/bamboo-home-logo-C-v9fQXG.png":"c912e4d254813380fbe84aceee399853468dfdaa1b078faae766d30849a45322","/assets/bamboo-CyH0HiOt.png":"786275aa3d104c4210bb40278c0122d6986c04f76493f626ea4f080f5b6722ba"}}
+[debug] [2026-07-31T13:47:44.243Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/84219699619/sites/bamboo-home/versions/217dbf7b5a36290a:populateFiles 200
+[debug] [2026-07-31T13:47:44.243Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/84219699619/sites/bamboo-home/versions/217dbf7b5a36290a:populateFiles {"uploadRequiredHashes":["5724b6e97313bb09dffb18a03528f8887e43cd76e08d7bba63bcd3f4091618c5","2176a9f2d105d30af31c2044da005e820239764c7cf85a9c48098072bf229a62"],"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/bamboo-home/versions/217dbf7b5a36290a/files"}
+[debug] [2026-07-31T13:47:44.243Z] Checked if tokens are valid: true, expires at: 1785509259240
+[debug] [2026-07-31T13:47:44.244Z] Checked if tokens are valid: true, expires at: 1785509259240
+[debug] [2026-07-31T13:47:44.244Z] Checked if tokens are valid: true, expires at: 1785509259240
+[debug] [2026-07-31T13:47:44.245Z] Checked if tokens are valid: true, expires at: 1785509259240
+[debug] [2026-07-31T13:47:44.245Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/bamboo-home/versions/217dbf7b5a36290a/files/5724b6e97313bb09dffb18a03528f8887e43cd76e08d7bba63bcd3f4091618c5 [none]
+[debug] [2026-07-31T13:47:44.246Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/bamboo-home/versions/217dbf7b5a36290a/files/5724b6e97313bb09dffb18a03528f8887e43cd76e08d7bba63bcd3f4091618c5 [stream]
+[debug] [2026-07-31T13:47:44.248Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/bamboo-home/versions/217dbf7b5a36290a/files/2176a9f2d105d30af31c2044da005e820239764c7cf85a9c48098072bf229a62 [none]
+[debug] [2026-07-31T13:47:44.249Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/bamboo-home/versions/217dbf7b5a36290a/files/2176a9f2d105d30af31c2044da005e820239764c7cf85a9c48098072bf229a62 [stream]
+[debug] [2026-07-31T13:47:44.253Z] [hosting][populate queue][FINAL] {"max":758,"min":758,"avg":758,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":766}
+[debug] [2026-07-31T13:47:44.253Z] [hosting] uploads queued: 2
+[info] i  hosting: uploading new files [0/2] (0%) 
+[debug] [2026-07-31T13:47:46.236Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/bamboo-home/versions/217dbf7b5a36290a/files/5724b6e97313bb09dffb18a03528f8887e43cd76e08d7bba63bcd3f4091618c5 200
+[debug] [2026-07-31T13:47:46.237Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/bamboo-home/versions/217dbf7b5a36290a/files/5724b6e97313bb09dffb18a03528f8887e43cd76e08d7bba63bcd3f4091618c5 [stream]
+[debug] [2026-07-31T13:47:46.880Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/bamboo-home/versions/217dbf7b5a36290a/files/2176a9f2d105d30af31c2044da005e820239764c7cf85a9c48098072bf229a62 200
+[debug] [2026-07-31T13:47:46.881Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/bamboo-home/versions/217dbf7b5a36290a/files/2176a9f2d105d30af31c2044da005e820239764c7cf85a9c48098072bf229a62 [stream]
+[debug] [2026-07-31T13:47:46.882Z] [hosting][upload queue][FINAL] {"max":2637,"min":1994,"avg":2315.5,"active":0,"complete":2,"success":2,"errored":0,"retried":0,"total":2,"elapsed":2639}
+[info] i  hosting: upload complete 
+[info] +  hosting[bamboo-home]: file upload complete 
+[debug] [2026-07-31T13:47:46.883Z] [hosting] deploy completed after 3486ms
+[debug] [2026-07-31T13:47:46.884Z] [
+  {
+    "config": {
+      "site": "bamboo-home",
+      "public": "dist",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "headers": [
+        {
+          "source": "**/*.@(js|css)",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000"
+            }
+          ]
+        }
+      ]
+    },
+    "version": "projects/84219699619/sites/bamboo-home/versions/217dbf7b5a36290a"
+  }
+]
+[info] i  hosting[bamboo-home]: finalizing version... 
+[debug] [2026-07-31T13:47:46.888Z] Checked if tokens are valid: true, expires at: 1785509259240
+[debug] [2026-07-31T13:47:46.889Z] Checked if tokens are valid: true, expires at: 1785509259240
+[debug] [2026-07-31T13:47:46.889Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/bamboo-home/versions/217dbf7b5a36290a updateMask=status%2Cconfig
+[debug] [2026-07-31T13:47:46.890Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/bamboo-home/versions/217dbf7b5a36290a {"status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}],"headers":[{"glob":"**/*.@(js|css)","headers":{"Cache-Control":"public, max-age=31536000"}}]}}
+[debug] [2026-07-31T13:47:47.584Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/bamboo-home/versions/217dbf7b5a36290a 200
+[debug] [2026-07-31T13:47:47.584Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/bamboo-home/versions/217dbf7b5a36290a {"name":"projects/84219699619/sites/bamboo-home/versions/217dbf7b5a36290a","status":"FINALIZED","config":{"headers":[{"headers":{"Cache-Control":"public, max-age=31536000"},"glob":"**/*.@(js|css)"}],"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-07-31T13:47:44.670324Z","createUser":{"email":"lacangchito@gmail.com"},"finalizeTime":"2026-07-31T13:47:49.587706Z","finalizeUser":{"email":"lacangchito@gmail.com"}}
+[debug] [2026-07-31T13:47:47.584Z] [hosting] finalized version for bamboo-home:[object Object]
+[info] +  hosting[bamboo-home]: version finalized 
+[info] i  hosting[bamboo-home]: releasing new version... 
+[debug] [2026-07-31T13:47:47.585Z] Checked if tokens are valid: true, expires at: 1785509259240
+[debug] [2026-07-31T13:47:47.585Z] Checked if tokens are valid: true, expires at: 1785509259240
+[debug] [2026-07-31T13:47:47.585Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/bamboo-home/channels/live/releases versionName=projects%2F84219699619%2Fsites%2Fbamboo-home%2Fversions%2F217dbf7b5a36290a
+[debug] [2026-07-31T13:47:47.585Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/bamboo-home/channels/live/releases {}
+[debug] [2026-07-31T13:47:48.359Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/bamboo-home/channels/live/releases 200
+[debug] [2026-07-31T13:47:48.359Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/bamboo-home/channels/live/releases {"name":"projects/84219699619/sites/bamboo-home/channels/live/releases/1785505669666000","version":{"name":"projects/84219699619/sites/bamboo-home/versions/217dbf7b5a36290a","status":"FINALIZED","config":{"headers":[{"headers":{"Cache-Control":"public, max-age=31536000"},"glob":"**/*.@(js|css)"}],"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-07-31T13:47:44.670324Z","createUser":{"email":"lacangchito@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocISawt11KnFvGRY4am6m85ekM_0Wk4j-w2VhTJBts8bhSPS1ENI"},"finalizeTime":"2026-07-31T13:47:49.587706Z","finalizeUser":{"email":"lacangchito@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocISawt11KnFvGRY4am6m85ekM_0Wk4j-w2VhTJBts8bhSPS1ENI"}},"type":"DEPLOY","releaseTime":"2026-07-31T13:47:49.666Z","releaseUser":{"email":"lacangchito@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocISawt11KnFvGRY4am6m85ekM_0Wk4j-w2VhTJBts8bhSPS1ENI"}}
+[debug] [2026-07-31T13:47:48.360Z] [hosting] release: {"name":"projects/84219699619/sites/bamboo-home/channels/live/releases/1785505669666000","version":{"name":"projects/84219699619/sites/bamboo-home/versions/217dbf7b5a36290a","status":"FINALIZED","config":{"headers":[{"headers":{"Cache-Control":"public, max-age=31536000"},"glob":"**/*.@(js|css)"}],"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-07-31T13:47:44.670324Z","createUser":{"email":"lacangchito@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocISawt11KnFvGRY4am6m85ekM_0Wk4j-w2VhTJBts8bhSPS1ENI"},"finalizeTime":"2026-07-31T13:47:49.587706Z","finalizeUser":{"email":"lacangchito@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocISawt11KnFvGRY4am6m85ekM_0Wk4j-w2VhTJBts8bhSPS1ENI"}},"type":"DEPLOY","releaseTime":"2026-07-31T13:47:49.666Z","releaseUser":{"email":"lacangchito@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocISawt11KnFvGRY4am6m85ekM_0Wk4j-w2VhTJBts8bhSPS1ENI"}}
+[info] +  hosting[bamboo-home]: release complete 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/greennest-7e7bc/overview
+[info] Hosting URL: https://bamboo-home.web.app

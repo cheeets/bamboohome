@@ -132,6 +132,13 @@ export default function SellerSidebar({ activeView, setActiveView }) {
               <Bot size={16} /> AI Support
             </button>
           </div>
+
+          <div className="nav-group">
+            <span className="nav-label">Store</span>
+            <button className={`nav-item ${activeView === 'store-profile' ? 'active' : ''}`} onClick={() => handleNavigation('store-profile')}>
+              <User size={16} /> Store Profile
+            </button>
+          </div>
         </nav>
 
         <div className="sidebar-footer">

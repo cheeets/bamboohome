@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../services/firebase'
-import { doc, getDoc, updateDoc, arrayUnion, addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, addDoc, collection, runTransaction, serverTimestamp } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { rateStore, calculateAverageRating, getStockStatus, formatPrice } from '../utils/rating'
@@ -16,6 +16,7 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
   const [isAdding, setIsAdding] = useState(false)
   const [sellerData, setSellerData] = useState(null)
   const [userRating, setUserRating] = useState(0)
+  const [productRatings, setProductRatings] = useState([])
   const [hoverRating, setHoverRating] = useState(0)
   const [submittingRating, setSubmittingRating] = useState(false)
   const [storeRating, setStoreRating] = useState(0)
@@ -33,8 +34,11 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
     if (isOpen && product?.sellerId) {
       fetchSellerData()
       setBuyQuantity(1) // Reset quantity to 1 when opening
+      const ratings = Array.isArray(product.ratings) ? product.ratings : []
+      setProductRatings(ratings)
+      setUserRating(ratings.find((item) => item.userId === user?.uid)?.rating || 0)
     }
-  }, [isOpen, product?.sellerId])
+  }, [isOpen, product?.id, product?.ratings, user?.uid])
 
   const fetchSellerData = async () => {
     try {
@@ -57,32 +61,35 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
       return
     }
 
+    if (userRole !== 'user') {
+      setToastMessage('Only buyers can rate products')
+      setToastType('info')
+      return
+    }
+
     try {
       setSubmittingRating(true)
       const productRef = doc(db, 'products', product.id)
-      
-      // Check if user already rated
-      const productSnap = await getDoc(productRef)
-      if (productSnap.exists()) {
-        const currentData = productSnap.data()
-        const existingRating = currentData.ratings?.find(r => r.userId === user.uid)
-        if (existingRating) {
-          setToastMessage('You have already rated this product.')
-          setToastType('info')
-          setSubmittingRating(false)
-          return
-        }
-      }
+      const updatedRating = await runTransaction(db, async (transaction) => {
+        const productSnap = await transaction.get(productRef)
+        if (!productSnap.exists()) throw new Error('This product is no longer available.')
 
-      await updateDoc(productRef, {
-        ratings: arrayUnion({
-          userId: user.uid,
-          rating: rating,
-          createdAt: new Date().toISOString()
-        })
+        const currentRatings = Array.isArray(productSnap.data().ratings)
+          ? productSnap.data().ratings
+          : []
+        const hadPreviousRating = currentRatings.some((item) => item.userId === user.uid)
+        const ratings = [
+          ...currentRatings.filter((item) => item.userId !== user.uid),
+          { userId: user.uid, rating, createdAt: new Date().toISOString() }
+        ]
+
+        transaction.update(productRef, { ratings })
+        return { ratings, hadPreviousRating }
       })
+
+      setProductRatings(updatedRating.ratings)
       setUserRating(rating)
-      setToastMessage('Thank you for rating this product!')
+      setToastMessage(updatedRating.hadPreviousRating ? 'Your product rating has been updated.' : 'Thank you for rating this product!')
       setToastType('success')
     } catch (err) {
       console.error('Error rating product:', err)
@@ -168,8 +175,8 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
 
   if (!isOpen || !product) return null
 
-  const averageRating = product.ratings?.length 
-    ? (product.ratings.reduce((acc, curr) => acc + curr.rating, 0) / product.ratings.length).toFixed(1)
+  const averageRating = productRatings.length
+    ? (productRatings.reduce((acc, curr) => acc + curr.rating, 0) / productRatings.length).toFixed(1)
     : 0
 
   const storeAverageRating = calculateAverageRating(sellerData?.storeRatings)
@@ -237,13 +244,13 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
                   <span key={star} className={star <= averageRating ? 'star filled' : 'star'}>★</span>
                 ))}
               </div>
-              <span className="rating-text">({averageRating}) • {product.ratings?.length || 0} reviews</span>
+              <span className="rating-text">({averageRating}) • {productRatings.length} reviews</span>
             </div>
 
             {product.storeName && <p className="product-details-seller">Sold by {product.storeName}</p>}
 
             <div className="rate-product-section">
-              <p>Rate this product:</p>
+              <p>{userRating ? 'Update your rating:' : 'Rate this product:'}</p>
               <div className="rating-input">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
