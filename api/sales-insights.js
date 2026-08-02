@@ -1,4 +1,11 @@
+import dotenv from "dotenv";
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
 import Groq from "groq-sdk";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+dotenv.config({ path: resolve(__dirname, '..', '.env') });
 
 export default async function handler(req, res) {
   // Set CORS headers to allow all origins for testing
@@ -20,6 +27,14 @@ export default async function handler(req, res) {
   }
 
   try {
+    if (!process.env.GROQ_API_KEY) {
+      console.error('GROQ_API_KEY is not configured for api/sales-insights.js');
+      return res.status(500).json({
+        success: false,
+        error: 'The AI service is not configured. Please set GROQ_API_KEY.',
+      });
+    }
+
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
     const products = req.body?.products;

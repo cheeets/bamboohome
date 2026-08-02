@@ -257,6 +257,108 @@ body,
   font-size: 14px;
 }
 
+.ai-sales-insights-card {
+  width: 100%;
+  max-width: 100%;
+}
+
+.ai-sales-insights-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.ai-sales-insights-title {
+  flex: 1;
+  min-width: 220px;
+}
+
+.ai-sales-insights-actions {
+  flex: 0 0 auto;
+}
+
+.ai-sales-insights-content {
+  white-space: pre-wrap;
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+.recycle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.recycle-action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.recycle-btn {
+  white-space: nowrap;
+}
+
+.recycle-modal-inner {
+  width: 100%;
+  max-width: 720px;
+}
+
+.recycle-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .ai-sales-insights-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ai-sales-insights-actions {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .ai-sales-insights-actions .btn {
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .recycle-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .recycle-action-buttons {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .recycle-action-buttons .recycle-btn {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .recycle-modal-inner {
+    width: calc(100% - 32px);
+    max-width: 720px;
+  }
+
+  .recycle-modal-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Form controls */
 input[type="text"],
 input[type="email"],

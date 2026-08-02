@@ -2,8 +2,13 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import Groq from "groq-sdk";
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+dotenv.config({ path: resolve(__dirname, ".env") });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -13,8 +18,13 @@ if (!process.env.GROQ_API_KEY) {
   process.exit(1);
 }
 
+const groqApiKey = process.env.GROQ_API_KEY;
+if (!groqApiKey) {
+  console.error("GROQ_API_KEY is missing from backend/.env");
+  process.exit(1);
+}
 const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
+  apiKey: groqApiKey,
 });
 
 app.use(
@@ -184,6 +194,7 @@ Important rules:
 app.post("/api/sales-insights", async (req, res) => {
   try {
     const products = req.body?.products;
+    console.log(`Received sales insights request with ${Array.isArray(products) ? products.length : 0} products`);
 
     if (!Array.isArray(products) || products.length === 0) {
       return res.status(400).json({
@@ -302,11 +313,15 @@ Write the report using the exact section headings and keep it clear, useful, and
       reply,
     });
   } catch (error) {
-    console.error("Sales insights error:", error);
+    console.error("Sales insights error:", error?.stack || error);
+
+    const errorMessage = process.env.NODE_ENV === 'production'
+      ? "The AI sales analysis is temporarily unavailable."
+      : error?.message || "Unexpected server error.";
 
     res.status(500).json({
       success: false,
-      error: "The AI sales analysis is temporarily unavailable.",
+      error: errorMessage,
     });
   }
 });

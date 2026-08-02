@@ -42,10 +42,10 @@ export default function AdminSalesInsights({ allOrders = [], allProducts = [] })
         return
       }
 
-      // Determine backend base URL: prefer VITE_API_BASE if set (Vite env), otherwise use localhost:5000 during local dev, else same origin
-      const envBase = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) ? import.meta.env.VITE_API_BASE : ''
-      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-      const backendBase = envBase || (isLocalhost ? `${window.location.protocol}//${window.location.hostname}:5000` : '')
+      // Determine backend base URL: prefer VITE_API_URL, then VITE_API_BASE, otherwise use same origin.
+      const envBaseRaw = import.meta?.env?.VITE_API_URL || import.meta?.env?.VITE_API_BASE || ''
+      const envBase = envBaseRaw.replace(/\/$/, '')
+      const backendBase = envBase || ''
 
       const res = await fetch(`${backendBase}/api/sales-insights`, {
         method: 'POST',
@@ -56,6 +56,16 @@ export default function AdminSalesInsights({ allOrders = [], allProducts = [] })
       // Read raw text first (backend may return non-JSON on errors)
       const text = await res.text()
       if (!res.ok) {
+        const contentType = res.headers.get('content-type') || ''
+        if (contentType.includes('text/html')) {
+          setError(
+            `Server returned ${res.status}. This may indicate the API backend is not reachable or returned an HTML error page. ` +
+            `Check that the backend server is running and VITE_API_URL/VITE_API_BASE is configured correctly.`
+          )
+          setLoading(false)
+          return
+        }
+
         // Try to parse JSON error, otherwise show raw text/status
         try {
           const parsed = JSON.parse(text || '{}')
@@ -77,8 +87,11 @@ export default function AdminSalesInsights({ allOrders = [], allProducts = [] })
       try {
         body = JSON.parse(text)
       } catch (e) {
-        // Not JSON — display raw text
-        setInsightText(text)
+        if (/^\s*</.test(text)) {
+          setError('Received an unexpected HTML response. Ensure the AI backend is running and /api/sales-insights is available.')
+        } else {
+          setInsightText(text)
+        }
         setLoading(false)
         return
       }
@@ -99,13 +112,13 @@ export default function AdminSalesInsights({ allOrders = [], allProducts = [] })
   }
 
   return (
-    <div style={{ marginTop: 18, padding: 12, border: '1px solid #e6e6e6', borderRadius: 8, background: '#fff' }}>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ flex: 1 }}>
+    <div className="ai-sales-insights-card" style={{ marginTop: 18, padding: 12, border: '1px solid #e6e6e6', borderRadius: 8, background: '#fff' }}>
+      <div className="ai-sales-insights-header" style={{ marginBottom: 12 }}>
+        <div className="ai-sales-insights-title">
           <strong>AI Sales Insights</strong>
-          <div style={{ fontSize: 13, color: '#6b7280' }}>On-demand AI-generated recommendations, inventory alerts and revenue opportunities based on current orders and product data.</div>
+          <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>On-demand AI-generated recommendations, inventory alerts and revenue opportunities based on current orders and product data.</div>
         </div>
-        <div>
+        <div className="ai-sales-insights-actions">
           <button className="btn btn-primary" onClick={handleGenerate} disabled={loading}>
             {loading ? 'Generating...' : 'Generate AI Insights'}
           </button>
@@ -115,7 +128,7 @@ export default function AdminSalesInsights({ allOrders = [], allProducts = [] })
       {error && <div style={{ color: '#b91c1c', marginBottom: 12 }}>{error}</div>}
 
       {insightText ? (
-        <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+        <div className="ai-sales-insights-content" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
           {insightText}
         </div>
       ) : (
