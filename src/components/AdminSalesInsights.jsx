@@ -42,14 +42,47 @@ export default function AdminSalesInsights({ allOrders = [], allProducts = [] })
         return
       }
 
-      const res = await fetch('/api/sales-insights', {
+      // Determine backend base URL: use port 5000 for local backend, otherwise same origin
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      const backendBase = isLocalhost ? `${window.location.protocol}//${window.location.hostname}:5000` : ''
+
+      const res = await fetch(`${backendBase}/api/sales-insights`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ products }),
       })
 
-      const body = await res.json()
-      if (!res.ok || !body.success) {
+      // Read raw text first (backend may return non-JSON on errors)
+      const text = await res.text()
+      if (!res.ok) {
+        // Try to parse JSON error, otherwise show raw text/status
+        try {
+          const parsed = JSON.parse(text || '{}')
+          setError(parsed.error || parsed.message || `Server returned ${res.status}`)
+        } catch (e) {
+          setError(text || `Server returned ${res.status}`)
+        }
+        setLoading(false)
+        return
+      }
+
+      if (!text) {
+        setError('Empty response from AI backend. Check server logs or API keys.')
+        setLoading(false)
+        return
+      }
+
+      let body
+      try {
+        body = JSON.parse(text)
+      } catch (e) {
+        // Not JSON — display raw text
+        setInsightText(text)
+        setLoading(false)
+        return
+      }
+
+      if (!body.success) {
         setError(body.error || 'AI analysis failed. Check backend logs or API keys.')
         setLoading(false)
         return
