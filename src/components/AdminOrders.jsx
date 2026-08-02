@@ -1,10 +1,13 @@
 import React, { useState } from 'react'
 import { Line, Doughnut } from 'react-chartjs-2'
 import { TrendingUp, Package, Users, Store, BarChart3, PieChart, Activity } from 'lucide-react'
+import AdminSalesInsights from './AdminSalesInsights'
 import { formatPrice } from '../utils/rating'
 import '../css/AdminOrdersDashboard.css'
 
 export default function AdminOrders({
+  allOrders = [],
+  allProducts = [],
   loading,
   error,
   filteredOrders,
@@ -150,6 +153,11 @@ export default function AdminOrders({
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* AI Sales Insights widget */}
+            <div style={{ marginTop: 18 }}>
+              <AdminSalesInsights allOrders={allOrders} allProducts={allProducts} />
             </div>
           </div>
         )}

@@ -710,6 +710,8 @@ export function AdminOrdersDashboard() {
               <AdminOrders
                 loading={loading}
                 error={error}
+                allOrders={allOrders}
+                allProducts={allProducts}
                 filteredOrders={filteredOrders}
                 stats={stats}
                 platformStats={platformStats}
