@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { db } from '../services/firebase'
-import { collection, query, where, doc, updateDoc, onSnapshot } from 'firebase/firestore'
+import { collection, query, where, doc, updateDoc, onSnapshot, getDocs, documentId } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 import { Toast } from '../components/Toast'
 import UserSidebar from '../components/UserSidebar'
@@ -24,6 +24,7 @@ export function Orders() {
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [activeView, setActiveView] = useState('orders')
+  const [productStatusMap, setProductStatusMap] = useState({})
 
   const normalizeStatus = (s) => (s || '').toString().toLowerCase()
 
@@ -81,6 +82,47 @@ export function Orders() {
     return () => unsubscribe()
   }, [user, navigate])
 
+  useEffect(() => {
+    const loadProductStatuses = async () => {
+      const productIds = Array.from(
+        new Set(
+          orders
+            .flatMap((order) => (order.products || order.items || []).map((item) => item.productId).filter(Boolean)),
+        ),
+      )
+
+      if (productIds.length === 0) {
+        setProductStatusMap({})
+        return
+      }
+
+      try {
+        const statusMap = {}
+        const chunkSize = 10
+        for (let i = 0; i < productIds.length; i += chunkSize) {
+          const chunk = productIds.slice(i, i + chunkSize)
+          const productQuery = query(collection(db, 'products'), where(documentId(), 'in', chunk))
+          const snapshot = await getDocs(productQuery)
+          snapshot.forEach((docSnap) => {
+            statusMap[docSnap.id] = { id: docSnap.id, ...docSnap.data() }
+          })
+        }
+
+        productIds.forEach((productId) => {
+          if (!statusMap[productId]) {
+            statusMap[productId] = { missing: true }
+          }
+        })
+
+        setProductStatusMap(statusMap)
+      } catch (err) {
+        console.error('Error loading product statuses for orders:', err)
+      }
+    }
+
+    loadProductStatuses()
+  }, [orders])
+
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A'
     const date = timestamp.toDate?.() || new Date(timestamp)
@@ -129,6 +171,12 @@ export function Orders() {
     setShowCancelModal(false)
     setCancellingOrderId(null)
     setCancelError('')
+  }
+
+  const isItemUnavailable = (item) => {
+    if (!item?.productId) return false
+    const status = productStatusMap[item.productId]
+    return !!status && (status.missing || status.deleted || status.permanentlyDeleted)
   }
 
   const handleViewDetails = (order) => {
@@ -214,10 +262,18 @@ export function Orders() {
                             )}
                           </div>
                           <div className="item-details">
-                            <span className="item-name">{item.name}</span>
-                            <span className="item-meta">Qty: {item.quantity} × {formatPrice(item.price)}</span>
+                            <span className="item-name">
+                              {isItemUnavailable(item) ? 'Product not available' : item.name}
+                            </span>
+                            <span className="item-meta">
+                              {isItemUnavailable(item)
+                                ? 'This product has been removed from the store.'
+                                : `Qty: ${item.quantity} × ${formatPrice(item.price)}`}
+                            </span>
                           </div>
-                          <span className="item-subtotal">{formatPrice(item.price * item.quantity)}</span>
+                          <span className="item-subtotal">
+                            {formatPrice(item.price * item.quantity)}
+                          </span>
                         </div>
                       ))}
                       {orderItems.length > 3 && (
@@ -308,8 +364,14 @@ export function Orders() {
                   {(selectedOrder.products || selectedOrder.items || []).map((item, index) => (
                     <div key={index} className="modal-item">
                       <div className="modal-item-info">
-                        <span className="modal-item-name">{item.name}</span>
-                        <span className="modal-item-qty">Qty: {item.quantity}</span>
+                        <span className="modal-item-name">
+                          {isItemUnavailable(item) ? 'Product not available' : item.name}
+                        </span>
+                        <span className="modal-item-qty">
+                          {isItemUnavailable(item)
+                            ? 'This product has been removed from the store.'
+                            : `Qty: ${item.quantity}`}
+                        </span>
                       </div>
                       <span className="modal-item-subtotal">{formatPrice(item.price * item.quantity)}</span>
                     </div>
