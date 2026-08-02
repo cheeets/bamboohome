@@ -179,6 +179,26 @@ export function Orders() {
     return !!status && (status.missing || status.deleted || status.permanentlyDeleted)
   }
 
+  const orderHasUnavailableItems = (order) => {
+    return (order.products || order.items || []).some(isItemUnavailable)
+  }
+
+  const getOrderStatusLabel = (order) => {
+    const normalized = normalizeStatus(order.status)
+    if (orderHasUnavailableItems(order) && !['cancelled', 'delivered', 'completed', 'rejected'].includes(normalized)) {
+      return 'Unavailable'
+    }
+    return order.status
+  }
+
+  const getOrderStatusClass = (order) => {
+    const normalized = normalizeStatus(order.status)
+    if (orderHasUnavailableItems(order) && !['cancelled', 'delivered', 'completed', 'rejected'].includes(normalized)) {
+      return 'status-unavailable'
+    }
+    return `status-${normalized}`
+  }
+
   const handleViewDetails = (order) => {
     setSelectedOrder(order)
     setShowDetailsModal(true)
@@ -247,7 +267,7 @@ export function Orders() {
                         <span className="order-id1">Order #{order.id.slice(0, 8).toUpperCase()}</span>
                         <span className="order-date">{formatDate(order.createdAt)}</span>
                       </div>
-                      <span className={`order-status status-${normalizeStatus(order.status)}`}>{order.status}</span>
+                      <span className={`order-status ${getOrderStatusClass(order)}`}>{getOrderStatusLabel(order)}</span>
                     </div>
 
                     {/* Order Items Preview */}
@@ -297,13 +317,18 @@ export function Orders() {
                         >
                           View Details
                         </button>
-                        {normalizeStatus(order.status) === 'pending' && (
+                        {normalizeStatus(order.status) === 'pending' && !orderHasUnavailableItems(order) && (
                           <button
                             className="btn-cancel-orderr"
                             onClick={() => handleCancelClick(order.id)}
                           >
                             Cancel Order
                           </button>
+                        )}
+                        {orderHasUnavailableItems(order) && (
+                          <div style={{ color: '#b91c1c', fontSize: '13px', marginTop: '6px' }}>
+                            One or more items in this order are no longer available.
+                          </div>
                         )}
                       </div>
                     </div>
@@ -352,7 +377,7 @@ export function Orders() {
                 </div>
                 <div className="detail-itemm">
                   <span className="detail-label">Status:</span>
-                  <span className={`detail-badge status-${normalizeStatus(selectedOrder.status)}`}>{selectedOrder.status}</span>
+                  <span className={`detail-badge ${getOrderStatusClass(selectedOrder)}`}>{getOrderStatusLabel(selectedOrder)}</span>
                 </div>
               </div>
 

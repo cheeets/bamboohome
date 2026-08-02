@@ -96,20 +96,39 @@ export function ShopPage() {
       const matchesStore = selectedStore === 'all' ? true : product.storeName === selectedStore
       return matchesSearch && matchesStore
     })
-
+ 
     const parseCreatedAt = (value) => {
       if (!value) return 0
       if (value?.toDate) return value.toDate().getTime()
       const parsed = new Date(value)
       return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime()
     }
-
+ 
+    const getAverageRating = (product) => {
+      const ratings = Array.isArray(product.ratings) ? product.ratings : []
+      if (ratings.length === 0) return 0
+      const total = ratings.reduce((sum, rating) => sum + (rating.rating || 0), 0)
+      return total / ratings.length
+    }
+ 
+    const getRatingCount = (product) => (Array.isArray(product.ratings) ? product.ratings.length : 0)
+ 
     if (sortBy === 'price-asc') {
       filtered.sort((a, b) => Number(a.price || 0) - Number(b.price || 0))
     } else if (sortBy === 'price-desc') {
       filtered.sort((a, b) => Number(b.price || 0) - Number(a.price || 0))
     } else if (sortBy === 'name-asc') {
       filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    } else if (sortBy === 'rating') {
+      filtered.sort((a, b) => {
+        const avgA = getAverageRating(a)
+        const avgB = getAverageRating(b)
+        if (avgB !== avgA) return avgB - avgA
+        const countA = getRatingCount(a)
+        const countB = getRatingCount(b)
+        if (countB !== countA) return countB - countA
+        return parseCreatedAt(b.createdAt) - parseCreatedAt(a.createdAt)
+      })
     } else {
       filtered.sort((a, b) => parseCreatedAt(b.createdAt) - parseCreatedAt(a.createdAt))
     }
@@ -164,6 +183,7 @@ export function ShopPage() {
                 className="sort-select"
               >
                 <option value="newest">Newest</option>
+                <option value="rating">Highest Ratings</option>
                 <option value="price-asc">Price: Low to High</option>
                 <option value="price-desc">Price: High to Low</option>
                 <option value="name-asc">Name: A–Z</option>

@@ -114,6 +114,12 @@
   color: #991b1b;
 }
 
+.status-unavailable {
+ background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+ color: #991b1b;
+ border: 1px solid #fca5a5;
+}
+
 /* Order Items Preview */
 .order-items-preview {
   padding: 20px 24px;

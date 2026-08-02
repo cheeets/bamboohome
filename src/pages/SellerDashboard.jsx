@@ -136,19 +136,19 @@ export function SellerDashboard() {
     e.preventDefault()
     const name = sellerProfile.name.trim().replace(/\s+/g, ' ')
     const contactNumber = sellerProfile.contactNumber.trim()
-
+ 
     if (!/^[\p{L}]+(?:[ '\-][\p{L}]+)+$/u.test(name)) {
       setToastMessage('Enter your full name using letters only.')
       setToastType('error')
       return
     }
-
+ 
     if (!/^(?:09\d{9}|\+639\d{9})$/.test(contactNumber)) {
       setToastMessage('Enter 09XXXXXXXXX or +639XXXXXXXXX for your contact number.')
       setToastType('error')
       return
     }
-
+ 
     try {
       setSavingStoreProfile(true)
       await updateDoc(doc(db, 'users', user.uid), { name, contactNumber })
@@ -163,7 +163,27 @@ export function SellerDashboard() {
       setSavingStoreProfile(false)
     }
   }
-
+ 
+  const handleDeleteSellerProduct = async (productId) => {
+    const confirmed = window.confirm('Delete this product? It will be removed from buyers and appear as unavailable in orders.')
+    if (!confirmed) return
+ 
+    try {
+      await updateDoc(doc(db, 'products', productId), {
+        deleted: true,
+        deletedAt: new Date(),
+        deletedBy: user.uid,
+      })
+      setToastMessage('Product deleted successfully.')
+      setToastType('success')
+      await fetchProducts()
+    } catch (err) {
+      console.error('Error deleting seller product:', err)
+      setToastMessage('Could not delete product. Please try again.')
+      setToastType('error')
+    }
+  }
+ 
   // Real-time products listener for inventory monitoring
   useEffect(() => {
     if (!user) return
@@ -179,6 +199,7 @@ export function SellerDashboard() {
       const list = []
       snapshot.forEach((docSnap) => {
         const data = docSnap.data()
+        if (data.deleted) return
         list.push({
           id: docSnap.id,
           ...data,
@@ -218,6 +239,7 @@ export function SellerDashboard() {
       const list = []
       snapshot.forEach((docSnap) => {
         const data = docSnap.data()
+        if (data.deleted) return
         list.push({
           id: docSnap.id,
           ...data,
@@ -1604,13 +1626,32 @@ export function SellerDashboard() {
                                     </span>
                                   </td>
                                   <td>
-                                    <button className="btn-table-edit" onClick={() => {
-                                      setEditingProduct(product)
-                                      setModalCategory(product.category)
-                                      setShowProductModal(true)
-                                    }}>
-                                      Update Stock
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                      <button className="btn-table-edit" onClick={() => {
+                                        setEditingProduct(product)
+                                        setModalCategory(product.category)
+                                        setShowProductModal(true)
+                                      }}>
+                                        Update Stock
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn-table-delete"
+                                        style={{
+                                          background: '#F97316',
+                                          color: '#fff',
+                                          border: 'none',
+                                          borderRadius: '10px',
+                                          padding: '10px 14px',
+                                          cursor: 'pointer',
+                                          fontWeight: 700,
+                                          transition: 'background 0.2s ease',
+                                        }}
+                                        onClick={() => handleDeleteSellerProduct(product.id)}
+                                      >
+                                        Delete
+                                      </button>
+                                    </div>
                                   </td>
                                 </tr>
                               )
