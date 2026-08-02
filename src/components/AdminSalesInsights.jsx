@@ -42,9 +42,10 @@ export default function AdminSalesInsights({ allOrders = [], allProducts = [] })
         return
       }
 
-      // Determine backend base URL: use port 5000 for local backend, otherwise same origin
+      // Determine backend base URL: prefer VITE_API_BASE if set (Vite env), otherwise use localhost:5000 during local dev, else same origin
+      const envBase = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) ? import.meta.env.VITE_API_BASE : ''
       const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-      const backendBase = isLocalhost ? `${window.location.protocol}//${window.location.hostname}:5000` : ''
+      const backendBase = envBase || (isLocalhost ? `${window.location.protocol}//${window.location.hostname}:5000` : '')
 
       const res = await fetch(`${backendBase}/api/sales-insights`, {
         method: 'POST',
