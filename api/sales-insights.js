@@ -10,6 +10,86 @@ if (!process.env.GROQ_API_KEY) {
   dotenv.config({ path: resolve(__dirname, '..', 'backend', '.env') });
 }
 
+function generateFallbackInsights(products) {
+  if (!Array.isArray(products) || products.length === 0) {
+    return "AI Sales Advisor\n\nNo products available to analyze.";
+  }
+
+  const validProducts = products
+    .filter((p) => p && (p.name || p.title))
+    .map((p) => ({
+      name: p.name || p.title || 'Unnamed Product',
+      sold: Math.max(0, Number(p.sold || p.salesCount || p.soldCount || 0)),
+      stock: Math.max(0, Number(p.stock || 0)),
+      price: Math.max(0, Number(p.price || 0)),
+      category: p.category || 'General',
+    }));
+
+  if (validProducts.length === 0) {
+    return "AI Sales Advisor\n\nNo valid product data found for analysis.";
+  }
+
+  const sortedBySales = [...validProducts].sort((a, b) => b.sold - a.sold);
+  const bestSeller = sortedBySales[0];
+  const slowSellers = sortedBySales.filter((p) => p.sold === 0);
+  const lowStock = validProducts.filter((p) => p.stock > 0 && p.stock <= 5);
+  const outOfStock = validProducts.filter((p) => p.stock <= 0);
+
+  const totalSalesCount = validProducts.reduce((sum, p) => sum + p.sold, 0);
+  const totalRevenueEst = validProducts.reduce((sum, p) => sum + p.sold * p.price, 0);
+
+  let report = `AI Sales Advisor\n\n`;
+
+  report += `Business Summary\n`;
+  report += `- Analyzed ${validProducts.length} product listing(s) across your store.\n`;
+  report += `- Total recorded sales: ${totalSalesCount} unit(s) with an estimated revenue of ₱${totalRevenueEst.toLocaleString('en-US', { minimumFractionDigits: 2 })}.\n\n`;
+
+  report += `Best-Selling Product\n`;
+  if (bestSeller && bestSeller.sold > 0) {
+    report += `- Top performer: "${bestSeller.name}" with ${bestSeller.sold} unit(s) sold at ₱${bestSeller.price.toLocaleString()}.\n`;
+    report += `- High customer demand. Consider maintaining higher stock levels to prevent stockouts.\n\n`;
+  } else {
+    report += `- No sales recorded yet across products. Focus on initial promotions and featured listings.\n\n`;
+  }
+
+  report += `Slow-Selling Products\n`;
+  if (slowSellers.length > 0) {
+    const list = slowSellers.slice(0, 3).map((p) => `"${p.name}"`).join(', ');
+    report += `- Low activity on ${slowSellers.length} item(s): ${list}.\n`;
+    report += `- Recommendation: Review pricing, improve product images, or offer bundle discounts.\n\n`;
+  } else {
+    report += `- All current items have active sales momentum.\n\n`;
+  }
+
+  report += `Inventory Alerts\n`;
+  if (outOfStock.length > 0) {
+    const outList = outOfStock.map((p) => `"${p.name}"`).join(', ');
+    report += `- OUT OF STOCK (${outOfStock.length}): ${outList}. Restock urgently to capture missed demand.\n`;
+  }
+  if (lowStock.length > 0) {
+    const lowList = lowStock.map((p) => `"${p.name}" (${p.stock} remaining)`).join(', ');
+    report += `- LOW STOCK (${lowStock.length}): ${lowList}.\n`;
+  }
+  if (outOfStock.length === 0 && lowStock.length === 0) {
+    report += `- Healthy inventory levels across all catalog items.\n`;
+  }
+  report += `\n`;
+
+  report += `Revenue Opportunities\n`;
+  const highMarginItem = [...validProducts].sort((a, b) => b.price - a.price)[0];
+  if (highMarginItem) {
+    report += `- Feature high-value product "${highMarginItem.name}" (₱${highMarginItem.price.toLocaleString()}) on store home banner.\n`;
+  }
+  report += `- Create product bundles combining best sellers with slow-moving stock to boost average order value.\n\n`;
+
+  report += `Recommended Actions\n`;
+  report += `- 1. Immediately restock items marked low or out-of-stock.\n`;
+  report += `- 2. Run promotional discounts or spotlight campaigns for slow-moving products.\n`;
+  report += `- 3. Keep store contact details and barangay delivery locations updated.`;
+
+  return report;
+}
+
 export default async function handler(req, res) {
   // Set CORS headers to allow all origins for testing
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -30,11 +110,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    if (!process.env.GROQ_API_KEY) {
-      console.error('GROQ_API_KEY is not configured for api/sales-insights.js');
-      return res.status(500).json({
+    const products = req.body?.products;
+
+    if (!Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({
         success: false,
-        error: 'The AI service is not configured. Please set GROQ_API_KEY.',
+        error: "No product data was provided.",
+      });
+    }
+
+    // If GROQ_API_KEY is not set, return fallback analytical report immediately
+    if (!process.env.GROQ_API_KEY) {
+      const fallbackReport = generateFallbackInsights(products);
+      return res.json({
+        success: true,
+        reply: fallbackReport,
+        mostSoldProduct: products[0] || null,
       });
     }
 
