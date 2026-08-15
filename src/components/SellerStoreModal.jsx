@@ -163,9 +163,9 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
 
   const averageRating = calculateAverageRating(sellerData?.storeRatings)
   const displayStorePhoto = sellerData?.storePhotoUrl || storePhotoUrl
-  const sellerLocation = [sellerData?.barangay && `Barangay ${sellerData.barangay}`, sellerData?.municipality || 'Pinamungajan', 'Cebu']
-    .filter(Boolean)
-    .join(', ')
+  const barangayText = sellerData?.barangay ? `Barangay ${sellerData.barangay}` : 'Pinamungajan'
+  const sellerLocation = `${barangayText}, Pinamungajan, Cebu, Philippines`
+  const sellerDisplayAddress = `${barangayText}, Pinamungajan, Cebu`
   const sellerMapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sellerLocation)}`
 
   // Use all categories from admin
@@ -237,7 +237,7 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
                   </a>
                 )}
                 <a className="seller-contact-link seller-map-link" href={sellerMapUrl} target="_blank" rel="noreferrer">
-                  <MapPin size={14} /> View on map
+                  <MapPin size={14} /> {sellerLocation}
                 </a>
               </div>
             </div>
@@ -305,6 +305,28 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+                {/* Visible Store Location Map - Pinamungajan Only */}
+        <div className="store-location-map-container" style={{ padding: '0 20px', marginTop: '16px' }}>
+          <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+            <div style={{ background: '#f8fafc', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0' }}>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <MapPin size={16} style={{ color: '#16a34a' }} />
+                Store Location: {sellerDisplayAddress}
+              </span>
+              <a href={sellerMapUrl} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: '#005ce6', fontWeight: 700, textDecoration: 'none' }}>
+                Open Pinamungajan Map ↗
+              </a>
+            </div>
+            <iframe
+              title="Store Location Map - Pinamungajan Cebu"
+              width="100%"
+              height="200"
+              style={{ border: 0, display: 'block' }}
+              loading="lazy"
+              src={`https://maps.google.com/maps?q=${encodeURIComponent(sellerLocation)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+            ></iframe>
           </div>
         </div>
 

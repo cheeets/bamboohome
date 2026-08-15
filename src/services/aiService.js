@@ -1,4 +1,7 @@
-const API_URL = import.meta.env.VITE_API_URL || "";
+const getApiUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || '';
+  return envUrl.replace(/\/$/, '');
+};
 
 export async function askBuyerSupport({
   message,
@@ -11,7 +14,8 @@ export async function askBuyerSupport({
     throw new Error('Please enter a message.');
   }
 
-  const response = await fetch(`${API_URL}/api/buyer-support`, {
+  const baseUrl = getApiUrl();
+  const response = await fetch(`${baseUrl}/api/buyer-support`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -47,7 +51,8 @@ export async function askSellerSupport({
     throw new Error('Please enter a message.');
   }
 
-  const response = await fetch(`${API_URL}/api/seller-support`, {
+  const baseUrl = getApiUrl();
+  const response = await fetch(`${baseUrl}/api/seller-support`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -77,24 +82,49 @@ export async function generateSalesInsights(products) {
     throw new Error("There are no products to analyze.");
   }
 
-  const response = await fetch(`${API_URL}/api/sales-insights`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      products,
-    }),
-  });
+  const baseUrl = getApiUrl();
+  const endpoint = `${baseUrl}/api/sales-insights`;
 
-  const data = await response.json();
+  let response;
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        products,
+      }),
+    });
+  } catch (netErr) {
+    console.error("Network error reaching sales-insights:", netErr);
+    throw new Error(
+      `Unable to reach the AI server. Please verify the backend is running at ${baseUrl || 'http://localhost:5000'}.`
+    );
+  }
 
-  if (!response.ok) {
-    throw new Error(data.error || "Unable to generate sales insights.");
+  const contentType = response.headers.get("content-type") || "";
+  let data;
+
+  if (contentType.includes("application/json")) {
+    data = await response.json();
+  } else {
+    const text = await response.text();
+    if (text.trim().startsWith("<")) {
+      throw new Error(
+        `Server returned status ${response.status} (HTML). Ensure the backend server is running and /api/sales-insights is available.`
+      );
+    }
+    throw new Error(text || `Server returned status ${response.status}`);
+  }
+
+  if (!response.ok || data.success === false) {
+    throw new Error(data.error || data.message || "Unable to generate sales insights.");
   }
 
   return {
-    reply: data.reply || data.message || "",
+    success: true,
+    reply: data.reply || data.message || "No insights generated.",
     mostSoldProduct: data.mostSoldProduct || null,
   };
 }

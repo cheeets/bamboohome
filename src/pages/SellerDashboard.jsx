@@ -22,7 +22,7 @@ import {
 import { notifyOrderStatusChange } from '../services/notificationService'
 import { generateSalesInsights } from '../services/aiService'
 import { calculateAverageRating, getStockStatus, formatPrice } from '../utils/rating'
-import { AlertTriangle, BarChart3, MessageCircle, Package, Plus, ShoppingBag, Truck, X } from 'lucide-react'
+import { AlertTriangle, BarChart3, MessageCircle, Package, Plus, ShoppingBag, Truck, X, CreditCard } from 'lucide-react'
 import { Toast } from '../components/Toast'
 import '../css/BuyerLayout.css'
 import '../css/ShopPage.css'
@@ -341,7 +341,10 @@ export function SellerDashboard() {
         setToastMessage('Order accepted successfully!')
         setToastType('success')
       } else if (normalizedStatus === 'processing') {
-        setToastMessage('Order moved to Processing! ')
+        setToastMessage('Order moved to Processing!')
+        setToastType('success')
+      } else if (normalizedStatus === 'shipped') {
+        setToastMessage('Order marked as Shipped!')
         setToastType('success')
       } else if (normalizedStatus === 'rejected') {
         setToastMessage('Order rejected.')
@@ -824,14 +827,18 @@ export function SellerDashboard() {
     normalizeOrderStatus(order.status) === 'completed' || normalizeOrderStatus(order.status) === 'delivered'
   )
 
+  const STATUS_FLOW = {
+    pending:    { nextStatus: 'Accepted',   label: 'Accept Order',     className: 'btn-accept',   canReject: true },
+    accepted:   { nextStatus: 'Processing', label: 'Start Processing', className: 'btn-process',  canReject: false },
+    processing: { nextStatus: 'Shipped',    label: 'Mark as Shipped',  className: 'btn-ship',     canReject: false },
+    shipped:    { nextStatus: 'Delivered',  label: 'Mark Delivered',   className: 'btn-complete', canReject: false },
+  }
+
   const renderOrderSection = ({
     title,
     description,
     list,
     emptyMessage,
-    actionLabel,
-    actionStatus,
-    actionClassName,
   }) => (
     <section className="orders-section-card">
       <div className="section-header">
@@ -853,6 +860,8 @@ export function SellerDashboard() {
         <div className="seller-order-grid">
           {list.map((order) => {
             const orderItems = getOrderItems(order)
+            const normStatus = normalizeOrderStatus(order.status)
+            const action = STATUS_FLOW[normStatus]
             return (
               <article key={order.id} className="seller-order-card">
                 <div className="seller-order-card-header">
@@ -860,9 +869,24 @@ export function SellerDashboard() {
                     <span className="seller-order-label">Order</span>
                     <h3>#{order.id.slice(0, 8).toUpperCase()}</h3>
                   </div>
-                  <span className={`status-badge status-${normalizeOrderStatus(order.status)}`}>
-                    {order.status}
-                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                    <span className={`status-badge status-${normStatus}`}>
+                      {order.status}
+                    </span>
+                    <span className={`payment-status-badge ${order.paymentStatus?.includes('Paid') ? 'paid' : 'unpaid'}`} style={{
+                      background: order.paymentStatus?.includes('Paid') ? '#dcfce7' : '#fef3c7',
+                      color: order.paymentStatus?.includes('Paid') ? '#15803d' : '#b45309',
+                      padding: '3px 9px',
+                      borderRadius: '999px',
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      {order.paymentStatus?.includes('Paid') ? '📱 Paid Online (GCash)' : '💵 Cash On Delivery'}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="seller-order-meta">
@@ -882,6 +906,14 @@ export function SellerDashboard() {
                       <span className="seller-order-label" style={{ fontSize: '11px', letterSpacing: '0.04em' }}>Phone</span>
                       <p style={{ margin: '2px 0 0', fontSize: '13px' }}>{order.address?.phoneNumber || 'No phone provided'}</p>
                     </div>
+                    {order.paymentDetails?.referenceNumber && (
+                      <div style={{ marginTop: '6px', background: '#eff6ff', padding: '4px 8px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
+                        <span className="seller-order-label" style={{ fontSize: '10px', color: '#1d4ed8' }}>GCash Ref No.</span>
+                        <p style={{ margin: 0, fontSize: '12px', fontWeight: 800, color: '#1e40af', fontFamily: 'monospace' }}>
+                          {order.paymentDetails.referenceNumber}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -918,42 +950,33 @@ export function SellerDashboard() {
                     <span className="seller-order-label">Seller Total</span>
                     <strong>{formatPrice(getOrderTotal(order))}</strong>
                   </div>
-                  {normalizeOrderStatus(order.status) === 'pending' ? (
+                  {action && (
                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      <button
-                        className="btn-reject"
-                        onClick={() => updateOrderStatus(order.id, 'Rejected')}
-                        style={{
-                          background: '#FEF2F2',
-                          color: '#B91C1C',
-                          border: '1px solid #FECACA',
-                          padding: '10px 18px',
-                          borderRadius: '10px',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          fontSize: '13px'
-                        }}
-                      >
-                        Reject
-                      </button>
-                      {actionLabel && actionStatus && (
+                      {action.canReject && (
                         <button
-                          className={actionClassName}
-                          onClick={() => updateOrderStatus(order.id, actionStatus)}
+                          className="btn-reject"
+                          onClick={() => updateOrderStatus(order.id, 'Rejected')}
+                          style={{
+                            background: '#FEF2F2',
+                            color: '#B91C1C',
+                            border: '1px solid #FECACA',
+                            padding: '10px 18px',
+                            borderRadius: '10px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            fontSize: '13px'
+                          }}
                         >
-                          {actionLabel}
+                          Reject
                         </button>
                       )}
-                    </div>
-                  ) : (
-                    actionLabel && actionStatus && (
                       <button
-                        className={actionClassName}
-                        onClick={() => updateOrderStatus(order.id, actionStatus)}
+                        className={action.className}
+                        onClick={() => updateOrderStatus(order.id, action.nextStatus)}
                       >
-                        {actionLabel}
+                        {action.label}
                       </button>
-                    )
+                    </div>
                   )}
                 </div>
               </article>
@@ -1687,6 +1710,15 @@ export function SellerDashboard() {
                           <p>{completedOrders.length} Sold</p>
                         </div>
                       </div>
+                      <div className="summary-card gcash-paid" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                        <span className="summary-icon" style={{ background: '#dcfce7', color: '#16a34a' }}><CreditCard size={18} /></span>
+                        <div className="summary-info">
+                          <h3 style={{ color: '#166534' }}>GCash Paid Online</h3>
+                          <p style={{ color: '#15803d', fontWeight: 800 }}>
+                            {orders.filter(o => o.paymentStatus?.includes('Paid')).length} Paid Orders
+                          </p>
+                        </div>
+                      </div>
                     </div>
 
                     {renderOrderSection({
@@ -1694,20 +1726,14 @@ export function SellerDashboard() {
                       description: 'New buyer requests waiting for your confirmation.',
                       list: pendingOrders,
                       emptyMessage: 'No pending orders yet. Great job keeping up.',
-                      actionLabel: 'Process Order',
-                      actionStatus: 'Processing',
-                      actionClassName: 'btn-accept',
                     })}
 
                     <div style={{ marginTop: '30px' }}>
                       {renderOrderSection({
                         title: 'Active Deliveries',
-                        description: 'Orders already being prepared or shipped to buyers.',
+                        description: 'Orders accepted, being prepared, or shipped to buyers.',
                         list: processingOrders,
                         emptyMessage: 'No active deliveries right now.',
-                        actionLabel: 'Mark Delivered',
-                        actionStatus: 'Delivered',
-                        actionClassName: 'btn-complete',
                       })}
                     </div>
 

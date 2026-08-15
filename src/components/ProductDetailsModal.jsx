@@ -5,8 +5,9 @@ import { doc, getDoc, updateDoc, addDoc, collection, runTransaction, serverTimes
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { rateStore, calculateAverageRating, getStockStatus, formatPrice } from '../utils/rating'
-import { MessageCircle, Minus, Plus, ShoppingCart, X, Flag } from 'lucide-react'
+import { MessageCircle, Minus, Plus, ShoppingCart, X, Flag, Store } from 'lucide-react'
 import { Toast } from './Toast'
+import { SellerStoreModal } from './SellerStoreModal'
 import '../css/ProductDetailsModal.css'
 
 export function ProductDetailsModal({ isOpen, product, onClose }) {
@@ -24,6 +25,7 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
   const [submittingStoreRating, setSubmittingStoreRating] = useState(false)
   const [buyQuantity, setBuyQuantity] = useState(1)
   const [showReportModal, setShowReportModal] = useState(false)
+  const [showSellerStore, setShowSellerStore] = useState(false)
   const [reportReason, setReportReason] = useState('')
   const [reportDetails, setReportDetails] = useState('')
   const [submittingReport, setSubmittingReport] = useState(false)
@@ -327,21 +329,32 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
                       </div>
                     </div>
 
-                    <button
-                      className="btn-message-seller"
-                      onClick={() => navigate('/chat', { state: { sellerId: product.sellerId } })}
-                    >
-                      <MessageCircle size={14} />
-                      Message Seller
-                    </button>
-                    
-                    <button
-                      className="btn-report-store"
-                      onClick={() => setShowReportModal(true)}
-                    >
-                      <Flag size={14} />
-                      Report Store
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                      <button
+                        className="btn-message-seller"
+                        onClick={() => setShowSellerStore(true)}
+                        style={{ background: '#10B981', color: '#fff', border: 'none' }}
+                      >
+                        <Store size={14} />
+                        Visit Store
+                      </button>
+
+                      <button
+                        className="btn-message-seller"
+                        onClick={() => navigate('/chat', { state: { sellerId: product.sellerId || product.userId } })}
+                      >
+                        <MessageCircle size={14} />
+                        Message Seller
+                      </button>
+                      
+                      <button
+                        className="btn-report-store"
+                        onClick={() => setShowReportModal(true)}
+                      >
+                        <Flag size={14} />
+                        Report Store
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -464,6 +477,14 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
           onClose={() => setToastMessage('')}
         />
       )}
+
+      {/* Seller Store Modal */}
+      <SellerStoreModal
+        isOpen={showSellerStore}
+        sellerId={product.sellerId || product.userId || product.createdBy}
+        storeName={product.storeName || sellerData?.storeName || 'Store'}
+        onClose={() => setShowSellerStore(false)}
+      />
     </>
   )
 }

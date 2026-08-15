@@ -141,7 +141,7 @@ export function ProductCard({ product, onProductUpdated, onEditProduct, onViewDe
             )}
           </div>
 
-          {!canManage && isShopVariant && userRole === 'user' && (
+          {!canManage && isShopVariant && (!userRole || userRole === 'user') && (
             <div className="card-actions card-actions--shop">
               <button
                 type="button"
@@ -165,7 +165,7 @@ export function ProductCard({ product, onProductUpdated, onEditProduct, onViewDe
             </div>
           )}
 
-          {!canManage && !isShopVariant && userRole === 'user' && (
+          {!canManage && !isShopVariant && (!userRole || userRole === 'user') && (
             <div className="card-actions">
               <div className="quick-cart-row">
                 <div className="qty-selector" onClick={(e) => e.stopPropagation()}>
@@ -259,7 +259,7 @@ export function ProductCard({ product, onProductUpdated, onEditProduct, onViewDe
 
       <SellerStoreModal
         isOpen={showSellerStore}
-        sellerId={product.sellerId}
+        sellerId={product.sellerId || product.userId || product.createdBy}
         storeName={product.storeName || 'Store'}
         onClose={() => setShowSellerStore(false)}
       />

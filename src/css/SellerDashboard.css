@@ -1548,7 +1548,9 @@
 }
 
 .btn-accept,
-.btn-complete {
+.btn-complete,
+.btn-process,
+.btn-ship {
   padding: 10px 18px;
   border: none;
   border-radius: var(--radius-md);
@@ -1569,10 +1571,22 @@
   color: white;
 }
 
+.btn-process {
+  background: #2563eb;
+  color: white;
+}
+
+.btn-ship {
+  background: #7c3aed;
+  color: white;
+}
+
 .btn-accept:hover,
-.btn-complete:hover {
+.btn-complete:hover,
+.btn-process:hover,
+.btn-ship:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(46, 125, 50, 0.3);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
 /* Responsive Design */

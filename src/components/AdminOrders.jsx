@@ -224,6 +224,9 @@ export default function AdminOrders({
                 </div>
               </div>
             )}
+
+            {/* AI Sales Insights Section */}
+            <AdminSalesInsights allOrders={allOrders} allProducts={allProducts} />
           </div>
         )}
       </div>

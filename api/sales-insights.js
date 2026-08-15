@@ -6,6 +6,9 @@ import Groq from "groq-sdk";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 dotenv.config({ path: resolve(__dirname, '..', '.env') });
+if (!process.env.GROQ_API_KEY) {
+  dotenv.config({ path: resolve(__dirname, '..', 'backend', '.env') });
+}
 
 export default async function handler(req, res) {
   // Set CORS headers to allow all origins for testing
@@ -47,22 +50,30 @@ export default async function handler(req, res) {
     }
 
     const validProducts = products
-      .filter((product) => product && typeof product.name === "string")
+      .filter((product) => product && typeof product.name === "string" && product.name.trim() !== "")
       .map((product) => ({
+        id: product.id || undefined,
         name: product.name.trim(),
-        sold: Number(product.sold) || 0,
-        stock: Number(product.stock) || 0,
-        price: Number(product.price) || 0,
+        sold: Math.max(0, Number(product.sold) || 0),
+        stock: Math.max(0, Number(product.stock) || 0),
+        price: Math.max(0, Number(product.price) || 0),
         category: product.category || 'Unknown',
-        estimatedRevenue: Number(product.sold || 0) * Number(product.price || 0),
+        estimatedRevenue: Math.max(0, Number(product.sold) || 0) * Math.max(0, Number(product.price) || 0),
       }));
+
+    if (validProducts.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "No valid product data was provided.",
+      });
+    }
 
     const sortedProducts = [...validProducts].sort(
       (a, b) => b.sold - a.sold
     );
 
-    const mostSoldProduct = sortedProducts[0];
-    const worstSoldProduct = [...sortedProducts].pop();
+    const mostSoldProduct = sortedProducts[0] || null;
+    const worstSoldProduct = sortedProducts.length > 1 ? sortedProducts[sortedProducts.length - 1] : null;
     const lowStockProducts = validProducts.filter((product) => product.stock > 0 && product.stock <= 5);
     const outOfStockProducts = validProducts.filter((product) => product.stock <= 0);
     const revenueOpportunities = validProducts
@@ -70,6 +81,7 @@ export default async function handler(req, res) {
       .slice(0, 5)
       .map((product) => ({
         name: product.name,
+        sold: product.sold,
         potentialRevenue: product.estimatedRevenue,
       }));
 

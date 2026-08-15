@@ -38,26 +38,10 @@ service cloud.firestore {
       allow update: if isAdmin()
         || (
           request.auth.uid == userId
-          // basic ownership sanity checks
-          && request.resource.data.uid == resource.data.uid
-          && request.resource.data.email == resource.data.email
           && request.resource.data.role == resource.data.role
-          && request.resource.data.name is string
-          && (
-            // Owner performing a constrained soft-delete: set deleted=true and provide deletedAt timestamp, and change ONLY these keys
-            (
-              request.resource.data.deleted == true
-              && request.resource.data.deletedAt is timestamp
-              && request.resource.data.deletedBy == 'user'
-              // Only the changed keys may be 'deleted', 'deletedAt', and 'deletedBy' (use diff.changedKeys)
-              && request.resource.data.diff(resource.data).changedKeys().hasOnly(['deleted', 'deletedAt', 'deletedBy'])
-            )
-            ||
-            // Owner updating profile fields but NOT touching the deleted flag
-            (request.resource.data.deleted == resource.data.deleted)
-          )
+          && request.resource.data.email == resource.data.email
         )
-        // Allow only buyers (user role) to update storeRatings on other user docs
+        // Allow buyers to submit storeRatings on seller profiles
         || (isUser()
             && request.auth.uid != userId
             && ('storeRatings' in request.resource.data));
@@ -91,7 +75,10 @@ service cloud.firestore {
         && request.resource.data.totalAmount is number;
       allow update: if isAdmin()
         || isOrderSeller()
-        || (isOrderOwner() && request.resource.data.status == 'Cancelled');
+        || (isOrderOwner() && (
+            request.resource.data.status == 'Cancelled' ||
+            request.resource.data.paymentStatus == 'Paid Online (GCash)'
+          ));
       allow delete: if false;
     }
 

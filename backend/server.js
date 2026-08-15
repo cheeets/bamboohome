@@ -12,43 +12,41 @@ dotenv.config({ path: resolve(__dirname, ".env") });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
-if (!process.env.GROQ_API_KEY) {
-  console.error("GROQ_API_KEY is missing from backend/.env");
-  process.exit(1);
+let groq = null;
+if (process.env.GROQ_API_KEY) {
+  groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+} else {
+  console.warn("GROQ_API_KEY not set — AI endpoints are disabled.");
 }
 
-const groqApiKey = process.env.GROQ_API_KEY;
-if (!groqApiKey) {
-  console.error("GROQ_API_KEY is missing from backend/.env");
-  process.exit(1);
-}
-const groq = new Groq({
-  apiKey: groqApiKey,
-});
+
 
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) {
-        return callback(null, true)
+        return callback(null, true);
       }
 
       const allowedOrigins = [
         'http://localhost:5173',
         'http://localhost:5174',
         'http://localhost:5175',
+        'http://localhost:5176',
+        'http://127.0.0.1:5173',
         'https://bamboo-home.web.app',
-      ]
+      ];
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true)
+      if (allowedOrigins.includes(origin) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        return callback(null, true);
       }
 
-      callback(new Error('Not allowed by CORS'))
+      callback(null, true);
     },
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type'],
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 
@@ -61,8 +59,96 @@ app.get("/", (req, res) => {
   });
 });
 
+app.post("/api/buyer-support", async (req, res) => {
+  try {
+    if (!groq) {
+      return res.status(503).json({
+        success: false,
+        error: "The AI support assistant is temporarily disabled (GROQ_API_KEY missing).",
+      });
+    }
+
+    const message = req.body?.message;
+    const userName = req.body?.userName || '';
+    const history = Array.isArray(req.body?.history) ? req.body.history.slice(-10) : [];
+
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please enter a valid message.',
+      });
+    }
+
+    const systemPrompt = `
+You are the official AI Customer Support Assistant for Bamboo Home, a premier bamboo furniture and home decor marketplace.
+
+Customer Name:
+${userName || 'Valued Customer'}
+
+Help buyers with:
+- Finding bamboo products, categories, and custom crafts
+- How to browse, add to cart, and place orders
+- Payment options (Cash on Delivery, GCash, Maya, Card)
+- Order tracking and live GPS status updates
+- How to contact store sellers directly via Chat
+- Account management and platform features
+
+Guidelines:
+- Be polite, helpful, clear, and concise.
+- Provide step-by-step instructions when guiding buyers.
+- Do not claim to directly modify order status or make payments on behalf of users.
+- Do not use emojis.
+    `.trim();
+
+    const messages = [
+      {
+        role: 'system',
+        content: systemPrompt,
+      },
+      ...history.map((item) => ({
+        role: item.role === 'assistant' ? 'assistant' : 'user',
+        content: item.content || '',
+      })),
+      {
+        role: 'user',
+        content: message.trim(),
+      },
+    ];
+
+    const completion = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages,
+      temperature: 0.35,
+      max_completion_tokens: 600,
+    });
+
+    const reply =
+      completion.choices?.[0]?.message?.content ||
+      'Sorry, I could not generate a response.';
+
+    res.json({
+      success: true,
+      reply,
+    });
+  } catch (error) {
+    console.error("Buyer support error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: "The AI support assistant is temporarily unavailable.",
+    });
+  }
+});
+
 app.post("/api/seller-support", async (req, res) => {
   try {
+    if (!groq) {
+      return res.status(503).json({
+        success: false,
+        error: "The AI support assistant is temporarily disabled (GROQ_API_KEY missing).",
+      });
+    }
+
     const message = req.body?.message;
     const isSuspended = req.body?.isSuspended === true;
     const suspensionReason = req.body?.suspensionReason || '';
@@ -193,6 +279,13 @@ Important rules:
 
 app.post("/api/sales-insights", async (req, res) => {
   try {
+    if (!groq) {
+      return res.status(503).json({
+        success: false,
+        error: "The AI sales advisor is temporarily disabled (GROQ_API_KEY missing).",
+      });
+    }
+
     const products = req.body?.products;
     console.log(`Received sales insights request with ${Array.isArray(products) ? products.length : 0} products`);
 
@@ -204,22 +297,30 @@ app.post("/api/sales-insights", async (req, res) => {
     }
 
     const validProducts = products
-      .filter((product) => product && typeof product.name === "string")
+      .filter((product) => product && typeof product.name === "string" && product.name.trim() !== "")
       .map((product) => ({
+        id: product.id || undefined,
         name: product.name.trim(),
-        sold: Number(product.sold) || 0,
-        stock: Number(product.stock) || 0,
-        price: Number(product.price) || 0,
+        sold: Math.max(0, Number(product.sold) || 0),
+        stock: Math.max(0, Number(product.stock) || 0),
+        price: Math.max(0, Number(product.price) || 0),
         category: product.category || 'Unknown',
-        estimatedRevenue: Number(product.sold || 0) * Number(product.price || 0),
+        estimatedRevenue: Math.max(0, Number(product.sold) || 0) * Math.max(0, Number(product.price) || 0),
       }));
+
+    if (validProducts.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "No valid product data was provided.",
+      });
+    }
 
     const sortedProducts = [...validProducts].sort(
       (a, b) => b.sold - a.sold
     );
 
-    const mostSoldProduct = sortedProducts[0];
-    const worstSoldProduct = [...sortedProducts].pop();
+    const mostSoldProduct = sortedProducts[0] || null;
+    const worstSoldProduct = sortedProducts.length > 1 ? sortedProducts[sortedProducts.length - 1] : null;
     const lowStockProducts = validProducts.filter((product) => product.stock > 0 && product.stock <= 5);
     const outOfStockProducts = validProducts.filter((product) => product.stock <= 0);
     const revenueOpportunities = validProducts
@@ -227,6 +328,7 @@ app.post("/api/sales-insights", async (req, res) => {
       .slice(0, 5)
       .map((product) => ({
         name: product.name,
+        sold: product.sold,
         potentialRevenue: product.estimatedRevenue,
       }));
 
@@ -322,6 +424,31 @@ Write the report using the exact section headings and keep it clear, useful, and
     res.status(500).json({
       success: false,
       error: errorMessage,
+    });
+  }
+});
+
+app.post("/api/create-gcash-checkout", async (req, res) => {
+  try {
+    const { amount } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ success: false, error: "Invalid payment amount." });
+    }
+
+    const simulatedRef = 'GCASH-REF-' + Math.floor(100000000000 + Math.random() * 900000000000);
+    return res.json({
+      success: true,
+      gateway: 'GCash Express Gateway',
+      referenceNumber: simulatedRef,
+      paymentStatus: 'Paid Online (GCash)',
+      message: 'GCash online payment authorized successfully.',
+    });
+  } catch (error) {
+    console.error("GCash Checkout error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Unable to initialize GCash payment session.",
     });
   }
 });

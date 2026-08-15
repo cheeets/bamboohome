@@ -5,9 +5,13 @@ import { collection, query, where, doc, updateDoc, onSnapshot, getDocs, document
 import { useAuth } from '../context/AuthContext'
 import { Toast } from '../components/Toast'
 import UserSidebar from '../components/UserSidebar'
+import GpsDeliveryTrackerModal from '../components/GpsDeliveryTrackerModal'
+import { GcashDemoModal } from '../components/GcashDemoModal'
 import { formatPrice } from '../utils/rating'
+import { Navigation, MapPin, CreditCard } from 'lucide-react'
 import '../css/Orders.css'
 import '../css/AdminDashboardLayout.css'
+import '../css/GcashDemoModal.css'
 
 export function Orders() {
   const { user, userRole } = useAuth()
@@ -25,6 +29,15 @@ export function Orders() {
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [activeView, setActiveView] = useState('orders')
   const [productStatusMap, setProductStatusMap] = useState({})
+
+  // GPS Tracker State
+  const [showGpsModal, setShowGpsModal] = useState(false)
+  const [selectedGpsOrder, setSelectedGpsOrder] = useState(null)
+  const [filterTab, setFilterTab] = useState('all')
+
+  // GCash Pay Now State
+  const [showGcashPayModal, setShowGcashPayModal] = useState(false)
+  const [selectedGcashPayOrder, setSelectedGcashPayOrder] = useState(null)
 
   const normalizeStatus = (s) => (s || '').toString().toLowerCase()
 
@@ -57,7 +70,7 @@ export function Orders() {
         if (change.type === 'modified') {
           const data = change.doc.data()
           const status = normalizeStatus(data.status)
-          
+
           if (status === 'accepted') {
             setToastMessage('🎉 Your order has been accepted by the seller!')
             setToastType('success')
@@ -209,136 +222,323 @@ export function Orders() {
     setSelectedOrder(null)
   }
 
+  const handleOpenGpsModal = (order) => {
+    setSelectedGpsOrder(order)
+    setShowGpsModal(true)
+  }
+
+  const handleCloseGpsModal = () => {
+    setShowGpsModal(false)
+    setSelectedGpsOrder(null)
+  }
+
+  const handleOpenGcashPayModal = (order) => {
+    setSelectedGcashPayOrder(order)
+    setShowGcashPayModal(true)
+  }
+
+  const handleGcashPaymentComplete = async (simulatedRef) => {
+    if (!selectedGcashPayOrder) return
+    try {
+      const orderRef = doc(db, 'orders', selectedGcashPayOrder.id)
+      await updateDoc(orderRef, {
+        paymentMethod: 'GCash Express',
+        paymentStatus: 'Paid Online (GCash)',
+        paymentDetails: {
+          gateway: 'GCash Express Gateway',
+          referenceNumber: simulatedRef,
+          paidAt: new Date().toISOString(),
+          isDemo: true,
+        },
+        updatedAt: new Date(),
+      })
+
+      setToastMessage('🎉 GCash online payment completed successfully!')
+      setToastType('success')
+    } catch (err) {
+      console.error('Error updating order payment:', err)
+      setToastMessage('Failed to update GCash payment status.')
+      setToastType('error')
+    } finally {
+      setShowGcashPayModal(false)
+      setSelectedGcashPayOrder(null)
+    }
+  }
+
+  // Filter orders by tab
+  const filteredOrdersList = orders.filter((order) => {
+    const s = normalizeStatus(order.status)
+    if (filterTab === 'in-transit') {
+      return s === 'pending' || s === 'accepted' || s === 'processing' || s === 'shipped'
+    } else if (filterTab === 'delivered') {
+      return s === 'delivered' || s === 'completed'
+    } else if (filterTab === 'cancelled') {
+      return s === 'cancelled' || s === 'rejected'
+    }
+    return true
+  })
+
   return (
     <div className="admin-dashboard-layout">
       <div className="dashboard-shell-inner">
         <UserSidebar activeView={activeView} setActiveView={setActiveView} />
-        
+
         <main className="admin-main-content">
           <div className="admin-page-header">
-          <div className="header-content">
-            <h1>My Orders</h1>
-            <p className="header-subtitle">Track and manage your bamboo purchases</p>
-          </div>
-          <div className="header-stats">
-            <div className="quick-stat">
-              <span className="stat-value">{orders.length}</span>
-              <span className="stat-label">Total Orders</span>
+            <div className="header-content">
+              <h1>My Orders</h1>
+              <p className="header-subtitle">Track and manage your bamboo purchases with live GPS delivery map</p>
+            </div>
+            <div className="header-stats">
+              <div className="quick-stat">
+                <span className="stat-value">{orders.length}</span>
+                <span className="stat-label">Total Orders</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="admin-content-area">
-          {/* Toast Notification */}
-          {toastMessage && (
-            <Toast
-              message={toastMessage}
-              type={toastType}
-              duration={3000}
-              onClose={() => setToastMessage('')}
-            />
-          )}
+          <div className="admin-content-area">
+            {/* Toast Notification */}
+            {toastMessage && (
+              <Toast
+                message={toastMessage}
+                type={toastType}
+                duration={3000}
+                onClose={() => setToastMessage('')}
+              />
+            )}
 
-          {/* Loading State */}
-          {loading && <div className="loading">Loading your orders...</div>}
+            {/* Loading State */}
+            {loading && <div className="loading">Loading your orders...</div>}
 
-          {/* Error State */}
-          {error && <div className="error-message">{error}</div>}
+            {/* Error State */}
+            {error && <div className="error-message">{error}</div>}
 
-          {/* Empty State */}
-          {!loading && orders.length === 0 && (
-            <div className="empty-statee">
-              <p>No Orders Yet</p>
-              <button className="btn btn-primary" onClick={() => navigate('/shop')}>Start Shopping</button>
-            </div>
-          )}
+            {/* Filter Tabs */}
+            {!loading && orders.length > 0 && (
+              <div className="orders-filter-tabs" style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                <button
+                  className={`btn-tab ${filterTab === 'all' ? 'active' : ''}`}
+                  onClick={() => setFilterTab('all')}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '999px',
+                    border: filterTab === 'all' ? 'none' : '1px solid #d1d5db',
+                    background: filterTab === 'all' ? '#16a34a' : '#fff',
+                    color: filterTab === 'all' ? '#fff' : '#374151',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  All Orders ({orders.length})
+                </button>
+                <button
+                  className={`btn-tab ${filterTab === 'in-transit' ? 'active' : ''}`}
+                  onClick={() => setFilterTab('in-transit')}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '999px',
+                    border: filterTab === 'in-transit' ? 'none' : '1px solid #d1d5db',
+                    background: filterTab === 'in-transit' ? '#16a34a' : '#fff',
+                    color: filterTab === 'in-transit' ? '#fff' : '#374151',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  🚚 In Transit / Active ({orders.filter(o => ['pending', 'accepted', 'processing', 'shipped'].includes(normalizeStatus(o.status))).length})
+                </button>
+                <button
+                  className={`btn-tab ${filterTab === 'delivered' ? 'active' : ''}`}
+                  onClick={() => setFilterTab('delivered')}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '999px',
+                    border: filterTab === 'delivered' ? 'none' : '1px solid #d1d5db',
+                    background: filterTab === 'delivered' ? '#16a34a' : '#fff',
+                    color: filterTab === 'delivered' ? '#fff' : '#374151',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  ✅ Delivered ({orders.filter(o => ['delivered', 'completed'].includes(normalizeStatus(o.status))).length})
+                </button>
+                <button
+                  className={`btn-tab ${filterTab === 'cancelled' ? 'active' : ''}`}
+                  onClick={() => setFilterTab('cancelled')}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '999px',
+                    border: filterTab === 'cancelled' ? 'none' : '1px solid #d1d5db',
+                    background: filterTab === 'cancelled' ? '#16a34a' : '#fff',
+                    color: filterTab === 'cancelled' ? '#fff' : '#374151',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  ❌ Cancelled / Rejected ({orders.filter(o => ['cancelled', 'rejected'].includes(normalizeStatus(o.status))).length})
+                </button>
+              </div>
+            )}
 
-          {/* Orders List */}
-          {!loading && orders.length > 0 && (
-            <div className="orders-list">
-              {orders.map((order) => {
-                const orderItems = order.products || order.items || []
-                const itemCount = orderItems.reduce((sum, item) => sum + (item.quantity || 1), 0)
-                
-                return (
-                  <div key={order.id} className="order-card1">
-                    <div className="order-card-header">
-                      <div className="order-header-left">
-                        <span className="order-id1">Order #{order.id.slice(0, 8).toUpperCase()}</span>
-                        <span className="order-date">{formatDate(order.createdAt)}</span>
-                      </div>
-                      <span className={`order-status ${getOrderStatusClass(order)}`}>{getOrderStatusLabel(order)}</span>
-                    </div>
+            {/* Empty State */}
+            {!loading && filteredOrdersList.length === 0 && (
+              <div className="empty-statee">
+                <p>No Orders Found in this view</p>
+                <button className="btn btn-primary" onClick={() => { setFilterTab('all'); navigate('/shop') }}>Explore Products</button>
+              </div>
+            )}
 
-                    {/* Order Items Preview */}
-                    <div className="order-items-preview">
-                      {orderItems.slice(0, 3).map((item, index) => (
-                        <div key={index} className="order-item-mini">
-                          <div className="item-image-wrapper">
-                            {item.image || item.imageUrl ? (
-                              <img src={item.image || item.imageUrl} alt={item.name} className="item-thumbnail" />
-                            ) : (
-                              <div className="item-placeholder">📦</div>
-                            )}
-                          </div>
-                          <div className="item-details">
-                            <span className="item-name">
-                              {isItemUnavailable(item) ? 'Product not available' : item.name}
-                            </span>
-                            <span className="item-meta">
-                              {isItemUnavailable(item)
-                                ? 'This product has been removed from the store.'
-                                : `Qty: ${item.quantity} × ${formatPrice(item.price)}`}
-                            </span>
-                          </div>
-                          <span className="item-subtotal">
-                            {formatPrice(item.price * item.quantity)}
-                          </span>
+            {/* Orders List */}
+            {!loading && filteredOrdersList.length > 0 && (
+              <div className="orders-list">
+                {filteredOrdersList.map((order) => {
+                  const orderItems = order.products || order.items || []
+                  const itemCount = orderItems.reduce((sum, item) => sum + (item.quantity || 1), 0)
+                  const statusNorm = normalizeStatus(order.status)
+                  const isInTransit = ['pending', 'accepted', 'processing', 'shipped'].includes(statusNorm)
+
+                  return (
+                    <div key={order.id} className="order-card1">
+                      <div className="order-card-header">
+                        <div className="order-header-left">
+                          <span className="order-id1">Order #{order.id.slice(0, 8).toUpperCase()}</span>
+                          <span className="order-date">{formatDate(order.createdAt)}</span>
                         </div>
-                      ))}
-                      {orderItems.length > 3 && (
-                        <div className="more-items-indicator">
-                          +{orderItems.length - 3} more item{orderItems.length - 3 > 1 ? 's' : ''}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {isInTransit && (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: '#dcfce7',
+                              color: '#15803d',
+                              padding: '3px 8px',
+                              borderRadius: '999px',
+                              fontSize: '11px',
+                              fontWeight: 800
+                            }}>
+                              <span style={{ width: '6px', height: '6px', background: '#22c55e', borderRadius: '50%' }}></span>
+                              LIVE GPS ACTIVE
+                            </span>
+                          )}
+                          <span className={`order-status ${getOrderStatusClass(order)}`}>{getOrderStatusLabel(order)}</span>
                         </div>
-                      )}
-                    </div>
-
-                    {/* Order Summary */}
-                    <div className="order-summary-bar">
-                      <div className="summary-info">
-                        <span className="summary-label">{itemCount} item{itemCount > 1 ? 's' : ''}</span>
-                        <span className="summary-divider">•</span>
-                        <span className="summary-total">Total: {formatPrice(order.totalAmount)}</span>
                       </div>
-                      <div className="order-actionss">
-                        <button
-                          className="btn-view-details"
-                          onClick={() => handleViewDetails(order)}
-                        >
-                          View Details
-                        </button>
-                        {normalizeStatus(order.status) === 'pending' && !orderHasUnavailableItems(order) && (
+
+                      {/* Order Items Preview */}
+                      <div className="order-items-preview">
+                        {orderItems.slice(0, 3).map((item, index) => (
+                          <div key={index} className="order-item-mini">
+                            <div className="item-image-wrapper">
+                              {item.image || item.imageUrl ? (
+                                <img src={item.image || item.imageUrl} alt={item.name} className="item-thumbnail" />
+                              ) : (
+                                <div className="item-placeholder">📦</div>
+                              )}
+                            </div>
+                            <div className="item-details">
+                              <span className="item-name">
+                                {isItemUnavailable(item) ? 'Product not available' : item.name}
+                              </span>
+                              <span className="item-meta">
+                                {isItemUnavailable(item)
+                                  ? 'This product has been removed from the store.'
+                                  : `Qty: ${item.quantity} × ${formatPrice(item.price)}`}
+                              </span>
+                            </div>
+                            <span className="item-subtotal">
+                              {formatPrice(item.price * item.quantity)}
+                            </span>
+                          </div>
+                        ))}
+                        {orderItems.length > 3 && (
+                          <div className="more-items-indicator">
+                            +{orderItems.length - 3} more item{orderItems.length - 3 > 1 ? 's' : ''}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Order Summary */}
+                      <div className="order-summary-bar">
+                        <div className="summary-info">
+                          <span className="summary-label">{itemCount} item{itemCount > 1 ? 's' : ''}</span>
+                          <span className="summary-divider">•</span>
+                          <span className="summary-total">Total: {formatPrice(order.totalAmount)}</span>
+                        </div>
+                        <div className="order-actionss" style={{ gap: '8px' }}>
+                          {!['cancelled', 'rejected'].includes(statusNorm) && (
+                            <button
+                              className="btn-view-details btn-gps-tracker"
+                              onClick={() => handleOpenGpsModal(order)}
+                              style={{
+                                background: isInTransit ? '#16a34a' : '#0f766e',
+                                color: '#fff',
+                                border: 'none',
+                                fontWeight: 700,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}
+                            >
+                              <Navigation size={14} />
+                              {isInTransit ? 'Live GPS Tracker' : 'View Delivery Map'}
+                            </button>
+                          )}
+                          {/* Pay Now via GCash button for unpaid / COD active orders */}
+                          {!['cancelled', 'rejected'].includes(statusNorm) && order.paymentStatus !== 'Paid Online (GCash)' && (
+                            <button
+                              className="btn-view-details"
+                              onClick={() => handleOpenGcashPayModal(order)}
+                              style={{
+                                background: '#005ce6',
+                                color: '#fff',
+                                border: 'none',
+                                fontWeight: 700,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}
+                            >
+                              <CreditCard size={14} />
+                              Pay via GCash
+                            </button>
+                          )}
                           <button
-                            className="btn-cancel-orderr"
-                            onClick={() => handleCancelClick(order.id)}
+                            className="btn-view-details"
+                            onClick={() => handleViewDetails(order)}
                           >
-                            Cancel Order
+                            View Details
                           </button>
-                        )}
-                        {orderHasUnavailableItems(order) && (
-                          <div style={{ color: '#b91c1c', fontSize: '13px', marginTop: '6px' }}>
-                            One or more items in this order are no longer available.
-                          </div>
-                        )}
+                          {normalizeStatus(order.status) === 'pending' && !orderHasUnavailableItems(order) && (
+                            <button
+                              className="btn-cancel-orderr"
+                              onClick={() => handleCancelClick(order.id)}
+                            >
+                              Cancel Order
+                            </button>
+                          )}
+                          {orderHasUnavailableItems(order) && (
+                            <div style={{ color: '#b91c1c', fontSize: '13px', marginTop: '6px' }}>
+                              One or more items in this order are no longer available.
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </main>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </main>
       </div>
 
       {/* Cancel Order Confirmation Modal */}
@@ -346,7 +546,7 @@ export function Orders() {
         <div className="modal-overlay" onClick={handleCloseCancelModal}>
           <div className="modal-content cancel-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-body">
-              <p1>Are you sure you want to cancel this order? This action cannot be undone.</p1>
+              <p>Are you sure you want to cancel this order? This action cannot be undone.</p>
               {cancelError && <div className="error-message">{cancelError}</div>}
               <div className="modal-actions3">
                 <button className="btn btn-secondary2" onClick={handleCloseCancelModal}>
@@ -417,6 +617,22 @@ export function Orders() {
                     <span className="summary-value">{selectedOrder.paymentMethod}</span>
                   </div>
                 )}
+                {selectedOrder.paymentStatus && (
+                  <div className="summary-item">
+                    <span className="summary-label">Payment Status:</span>
+                    <span className="summary-value" style={{ fontWeight: '700', color: selectedOrder.paymentStatus.includes('Paid') ? '#16a34a' : '#d97706' }}>
+                      {selectedOrder.paymentStatus}
+                    </span>
+                  </div>
+                )}
+                {selectedOrder.paymentDetails?.referenceNumber && (
+                  <div className="summary-item">
+                    <span className="summary-label">GCash Ref No.:</span>
+                    <span className="summary-value" style={{ fontFamily: 'monospace', fontWeight: '700' }}>
+                      {selectedOrder.paymentDetails.referenceNumber}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <button className="btn btn-primary btn-close-modal" onClick={handleCloseDetailsModal}>
@@ -426,6 +642,25 @@ export function Orders() {
           </div>
         </div>
       )}
+
+      {/* Live GPS Delivery Map Tracker Modal */}
+      {showGpsModal && selectedGpsOrder && (
+        <GpsDeliveryTrackerModal
+          order={selectedGpsOrder}
+          onClose={handleCloseGpsModal}
+        />
+      )}
+
+      {/* GCash Pay Now Demo Gateway Modal */}
+      <GcashDemoModal
+        isOpen={showGcashPayModal}
+        amount={selectedGcashPayOrder?.totalAmount || 0}
+        onClose={() => {
+          setShowGcashPayModal(false)
+          setSelectedGcashPayOrder(null)
+        }}
+        onPaymentSuccess={handleGcashPaymentComplete}
+      />
     </div>
   )
 }

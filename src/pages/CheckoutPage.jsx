@@ -7,7 +7,9 @@ import { useAuth } from '../context/AuthContext'
 import { Toast } from '../components/Toast'
 import { formatPrice } from '../utils/rating'
 import { createNotification } from '../services/notificationService'
+import { GcashDemoModal } from '../components/GcashDemoModal'
 import '../css/CheckoutPage.css'
+import '../css/GcashDemoModal.css'
 
 const PINAMUNGAJAN_BARANGAYS = [
   'Anislag', 'Anopog', 'Binabag', 'Buhingtubig', 'Busay', 'Butong', 'Cabiangon',
@@ -29,6 +31,7 @@ export function CheckoutPage() {
   const [checkingPrices, setCheckingPrices] = useState(true)
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState('success')
+  const [showGcashModal, setShowGcashModal] = useState(false)
 
   // Silently redirect admin users away from checkout page
   useEffect(() => {
@@ -94,6 +97,12 @@ export function CheckoutPage() {
     addressDetails: '',
     notes: '',
     paymentMethod: 'Cash On Delivery',
+    accountName: '',
+    accountNumber: '',
+    referenceNumber: '',
+    cardNumber: '',
+    cardExp: '',
+    cardCvv: '',
   })
 
   // Calculate price differences
@@ -148,11 +157,21 @@ export function CheckoutPage() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
-    const nextValue = name === 'fullName'
-      ? value.replace(/\d/g, '')
-      : name === 'phoneNumber'
-        ? value.replace(/(?!^\+)\D/g, '').slice(0, 13)
-        : value
+    let nextValue = value
+
+    if (name === 'fullName' || name === 'accountName') {
+      nextValue = value.replace(/\d/g, '')
+    } else if (name === 'phoneNumber' || name === 'accountNumber') {
+      nextValue = value.replace(/(?!^\+)\D/g, '').slice(0, 13)
+    } else if (name === 'referenceNumber') {
+      nextValue = value.replace(/\D/g, '').slice(0, 13)
+    } else if (name === 'cardNumber') {
+      nextValue = value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim().slice(0, 19)
+    } else if (name === 'cardExp') {
+      nextValue = value.replace(/\D/g, '').replace(/^(\d{2})(\d)/, '$1/$2').slice(0, 5)
+    } else if (name === 'cardCvv') {
+      nextValue = value.replace(/\D/g, '').slice(0, 3)
+    }
 
     setFormData((prev) => ({
       ...prev,
@@ -194,6 +213,20 @@ export function CheckoutPage() {
       return
     }
 
+    const addressLine = `${addressDetails}, Barangay ${formData.barangay}, Pinamungajan, Cebu 6039`
+
+    if (formData.paymentMethod !== 'Cash On Delivery') {
+      setShowGcashModal(true)
+      return
+    }
+
+    executeFinalOrderSubmission(null)
+  }
+
+  const executeFinalOrderSubmission = async (customGcashRef = null) => {
+    const fullName = formData.fullName.trim().replace(/\s+/g, ' ')
+    const phoneNumber = formData.phoneNumber.trim()
+    const addressDetails = formData.addressDetails.trim()
     const addressLine = `${addressDetails}, Barangay ${formData.barangay}, Pinamungajan, Cebu 6039`
 
     setLoading(true)
@@ -251,8 +284,6 @@ export function CheckoutPage() {
         }
 
         // 2) Perform all WRITES after all reads
-        
-        // Update inventory for all products
         for (const { item, ref, snap } of productSnapshots) {
           const currentStock = snap.data().stock ?? 0
           if (currentStock < item.quantity) {
@@ -279,13 +310,20 @@ export function CheckoutPage() {
 
           const totalAmount = products.reduce((sum, p) => sum + p.price * p.quantity, 0)
 
+          const isOnlineGcash = formData.paymentMethod !== 'Cash On Delivery'
+
+          const paymentDetails = isOnlineGcash ? {
+            gateway: 'GCash Express Gateway',
+            referenceNumber: customGcashRef || ('GCASH-' + Math.floor(100000000000 + Math.random() * 900000000000)),
+            paidAt: new Date().toISOString(),
+          } : null
+
           const orderData = {
             orderId: orderRef.id,
             userId: user.uid,
             userEmail: user.email,
             sellerId,
             products,
-            // Backward-compat (older UI expects `items`)
             items: products,
             totalAmount,
             address: {
@@ -294,7 +332,9 @@ export function CheckoutPage() {
               addressLine,
               notes: (formData.notes || '').trim(),
             },
-            paymentMethod: formData.paymentMethod,
+            paymentMethod: isOnlineGcash ? 'GCash Express' : 'Cash On Delivery',
+            paymentStatus: isOnlineGcash ? 'Paid Online (GCash)' : 'Unpaid (COD)',
+            paymentDetails,
             status: 'Pending',
             createdAt: serverTimestamp(),
           }
@@ -334,8 +374,6 @@ export function CheckoutPage() {
       navigate('/orders')
     } catch (err) {
       console.error('Error placing order:', err)
-      console.error('Error code:', err.code)
-      console.error('Error message:', err.message)
       
       let userMessage = 'Failed to place order. Please try again.'
       
@@ -543,7 +581,7 @@ export function CheckoutPage() {
                   <div className="form-group">
                     <label>Mode of Payment</label>
                     <div className="payment-method-group">
-                      <label className="payment-option">
+                      <label className={`payment-option-card ${formData.paymentMethod === 'Cash On Delivery' ? 'selected' : ''}`}>
                         <input
                           type="radio"
                           name="paymentMethod"
@@ -551,7 +589,27 @@ export function CheckoutPage() {
                           checked={formData.paymentMethod === 'Cash On Delivery'}
                           onChange={handleInputChange}
                         />
-                        Cash On Delivery
+                        <div className="payment-option-info">
+                          <span className="payment-title">💵 Cash On Delivery (COD)</span>
+                          <span className="payment-desc">Pay in cash when your order arrives at your address</span>
+                        </div>
+                      </label>
+
+                      <label className={`payment-option-card ${formData.paymentMethod === 'GCash Express' || formData.paymentMethod === 'GCash' ? 'selected' : ''}`}>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="GCash Express"
+                          checked={formData.paymentMethod === 'GCash Express' || formData.paymentMethod === 'GCash'}
+                          onChange={handleInputChange}
+                        />
+                        <div className="payment-option-info">
+                          <div className="payment-title-row">
+                            <span className="payment-title">📱 GCash Express (Online Gateway)</span>
+                            <span className="payment-badge online">GCash Express</span>
+                          </div>
+                          <span className="payment-desc">Fast & secure online checkout via instant GCash wallet</span>
+                        </div>
                       </label>
                     </div>
                   </div>
@@ -580,7 +638,7 @@ export function CheckoutPage() {
                   </div>
                   <div className="summary-item">
                     <span>Mode of Payment</span>
-                    <span>Cash On Delivery</span>
+                    <span style={{ fontWeight: '700', color: 'var(--primary-green)' }}>{formData.paymentMethod}</span>
                   </div>
 
                   <div className="summary-total">
@@ -603,6 +661,17 @@ export function CheckoutPage() {
           )}
         </div>
       </div>
+
+      {/* Capstone GCash Demo Gateway Modal */}
+      <GcashDemoModal
+        isOpen={showGcashModal}
+        amount={totalPrice}
+        onClose={() => setShowGcashModal(false)}
+        onPaymentSuccess={(simulatedRef) => {
+          setShowGcashModal(false)
+          executeFinalOrderSubmission(simulatedRef)
+        }}
+      />
     </>
   )
 }

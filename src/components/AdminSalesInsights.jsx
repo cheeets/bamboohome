@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { formatPrice } from '../utils/rating'
+import { generateSalesInsights } from '../services/aiService'
 
 export default function AdminSalesInsights({ allOrders = [], allProducts = [] }) {
   const [loading, setLoading] = useState(false)
@@ -7,27 +7,33 @@ export default function AdminSalesInsights({ allOrders = [], allProducts = [] })
   const [error, setError] = useState('')
 
   const buildProductPayload = () => {
-    // Build sold counts keyed by product name or id
+    // Build sold counts keyed by product ID and product name
     const soldMap = {}
     allOrders.forEach((order) => {
       ;(order.products || order.items || []).forEach((item) => {
-        const key = item.productId || item.id || item.name || 'Unknown Product'
+        const idKey = item.productId || item.id
+        const nameKey = item.name
         const qty = Number(item.quantity || item.qty || item.amount || 1)
-        soldMap[key] = (soldMap[key] || 0) + qty
+        if (idKey) soldMap[idKey] = (soldMap[idKey] || 0) + qty
+        if (nameKey) soldMap[nameKey] = (soldMap[nameKey] || 0) + qty
       })
     })
 
-    // Map through products and attach sold counts
+    // Map through non-deleted products and attach aggregated sold counts
     return allProducts
-      .filter(p => !p.deleted)
-      .map((p) => ({
-        id: p.id,
-        name: p.name || 'Unnamed',
-        sold: soldMap[p.id] || soldMap[p.name] || 0,
-        stock: Number(p.stock || 0),
-        price: Number(p.price || 0),
-        category: p.category || 'Unknown',
-      }))
+      .filter((p) => !p.deleted)
+      .map((p) => {
+        const soldFromOrders = (soldMap[p.id] || 0) + (p.name ? (soldMap[p.name] || 0) : 0)
+        const soldFromDoc = Number(p.sold || p.soldCount || p.salesCount || 0)
+        return {
+          id: p.id,
+          name: p.name || 'Unnamed Product',
+          sold: Math.max(soldFromOrders, soldFromDoc),
+          stock: Number(p.stock || 0),
+          price: Number(p.price || 0),
+          category: p.category || 'Unknown',
+        }
+      })
   }
 
   const handleGenerate = async () => {
@@ -42,70 +48,11 @@ export default function AdminSalesInsights({ allOrders = [], allProducts = [] })
         return
       }
 
-      // Determine backend base URL: prefer VITE_API_URL, then VITE_API_BASE, otherwise use same origin.
-      const envBaseRaw = import.meta?.env?.VITE_API_URL || import.meta?.env?.VITE_API_BASE || ''
-      const envBase = envBaseRaw.replace(/\/$/, '')
-      const backendBase = envBase || ''
-
-      const res = await fetch(`${backendBase}/api/sales-insights`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ products }),
-      })
-
-      // Read raw text first (backend may return non-JSON on errors)
-      const text = await res.text()
-      if (!res.ok) {
-        const contentType = res.headers.get('content-type') || ''
-        if (contentType.includes('text/html')) {
-          setError(
-            `Server returned ${res.status}. This may indicate the API backend is not reachable or returned an HTML error page. ` +
-            `Check that the backend server is running and VITE_API_URL/VITE_API_BASE is configured correctly.`
-          )
-          setLoading(false)
-          return
-        }
-
-        // Try to parse JSON error, otherwise show raw text/status
-        try {
-          const parsed = JSON.parse(text || '{}')
-          setError(parsed.error || parsed.message || `Server returned ${res.status}`)
-        } catch (e) {
-          setError(text || `Server returned ${res.status}`)
-        }
-        setLoading(false)
-        return
-      }
-
-      if (!text) {
-        setError('Empty response from AI backend. Check server logs or API keys.')
-        setLoading(false)
-        return
-      }
-
-      let body
-      try {
-        body = JSON.parse(text)
-      } catch (e) {
-        if (/^\s*</.test(text)) {
-          setError('Received an unexpected HTML response. Ensure the AI backend is running and /api/sales-insights is available.')
-        } else {
-          setInsightText(text)
-        }
-        setLoading(false)
-        return
-      }
-
-      if (!body.success) {
-        setError(body.error || 'AI analysis failed. Check backend logs or API keys.')
-        setLoading(false)
-        return
-      }
-
-      setInsightText(body.reply || 'No insights returned.')
+      const res = await generateSalesInsights(products)
+      setInsightText(res.reply || 'No insights returned.')
     } catch (err) {
-      console.error('AI insights error:', err)
-      setError('Failed to generate insights: ' + (err.message || err))
+      console.error('AI sales insights error:', err)
+      setError(err.message || 'Failed to generate insights.')
     } finally {
       setLoading(false)
     }
