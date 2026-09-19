@@ -68,12 +68,14 @@ export function ShopPage() {
         q = query(collection(db, 'products'), orderBy('createdAt', 'desc'))
       }
       const querySnapshot = await getDocs(q)
-      const productList = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        storeName: doc.data().storeName || 'GreenNest',
-        sellerId: doc.data().sellerId,
-      }))
+      const productList = querySnapshot.docs
+        .filter((doc) => !doc.data().deleted)
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          storeName: doc.data().storeName || 'GreenNest',
+          sellerId: doc.data().sellerId,
+        }))
       setProducts(productList)
       setError('')
     } catch (err) {

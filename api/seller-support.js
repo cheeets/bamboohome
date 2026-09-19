@@ -1,5 +1,35 @@
 import Groq from "groq-sdk";
 
+const MODEL_FALLBACK_CHAIN = [
+  "qwen/qwen3.8-27b",
+  "openai/gpt-oss-120b",
+  "openai/gpt-oss-20b",
+  "groq/compound",
+  "groq/compound-mini",
+];
+
+async function createChatCompletionWithFallback(groq, params, modelChain = MODEL_FALLBACK_CHAIN) {
+  let lastError = null;
+  for (const model of modelChain) {
+    try {
+      return await groq.chat.completions.create({ ...params, model });
+    } catch (err) {
+      lastError = err;
+      const msg = (err?.error?.message || err?.message || "").toLowerCase();
+      if (
+        msg.includes("decommissioned") ||
+        msg.includes("does not exist") ||
+        msg.includes("model_not_found") ||
+        msg.includes("no access")
+      ) {
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError || new Error("All models in the fallback chain failed.");
+}
+
 export default async function handler(req, res) {
   // Set CORS headers to allow all origins for testing
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -125,8 +155,7 @@ Important rules:
       },
     ]
 
-    const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+    const completion = await createChatCompletionWithFallback(groq, {
       messages,
       temperature: 0.35,
       max_completion_tokens: 600,

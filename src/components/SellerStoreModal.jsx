@@ -114,6 +114,7 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
       const querySnapshot = await getDocs(q)
       const products = []
       querySnapshot.forEach((doc) => {
+        if (doc.data().deleted) return
         products.push({
           id: doc.id,
           ...doc.data(),
@@ -456,6 +457,10 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
           isOpen={showProductDetails}
           product={selectedProduct}
           onClose={() => {
+            setShowProductDetails(false)
+            setSelectedProduct(null)
+          }}
+          onVisitStore={() => {
             setShowProductDetails(false)
             setSelectedProduct(null)
           }}

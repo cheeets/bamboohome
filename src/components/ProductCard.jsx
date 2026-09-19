@@ -12,7 +12,7 @@ import { Eye, Minus, Plus, ShoppingCart, Store, Trash2 } from 'lucide-react'
 import { Toast } from './Toast'
 import '../css/ProductCard.css'
 
-export function ProductCard({ product, onProductUpdated, onEditProduct, onViewDetails, showManagementActions = false, variant = 'default' }) {
+export function ProductCard({ product, onProductUpdated, onEditProduct, onDeleteProduct, onViewDetails, showManagementActions = false, variant = 'default' }) {
   const { user, userRole } = useAuth()
   const { addToCart } = useCart()
   const { openConfirmation } = useConfirmation()
@@ -35,10 +35,14 @@ export function ProductCard({ product, onProductUpdated, onEditProduct, onViewDe
       onConfirm: async () => {
         try {
           setDeleting(true)
-          await updateDoc(doc(db, 'products', product.id), {
-            deleted: true,
-            deletedAt: new Date(),
-          })
+          if (onDeleteProduct) {
+            await onDeleteProduct(product.id)
+          } else {
+            await updateDoc(doc(db, 'products', product.id), {
+              deleted: true,
+              deletedAt: new Date(),
+            })
+          }
           if (onProductUpdated) {
             onProductUpdated()
           }
@@ -255,6 +259,10 @@ export function ProductCard({ product, onProductUpdated, onEditProduct, onViewDe
         isOpen={showDetailsModal}
         product={product}
         onClose={() => setShowDetailsModal(false)}
+        onVisitStore={() => {
+          setShowDetailsModal(false)
+          setShowSellerStore(true)
+        }}
       />
 
       <SellerStoreModal

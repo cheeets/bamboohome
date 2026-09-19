@@ -19,7 +19,7 @@ import {
   Legend,
   Filler,
 } from 'chart.js'
-import { notifyOrderStatusChange } from '../services/notificationService'
+import { createNotification, notifyOrderStatusChange } from '../services/notificationService'
 import { generateSalesInsights } from '../services/aiService'
 import { calculateAverageRating, getStockStatus, formatPrice } from '../utils/rating'
 import { AlertTriangle, BarChart3, MessageCircle, Package, Plus, ShoppingBag, Truck, X, CreditCard } from 'lucide-react'
@@ -164,9 +164,11 @@ export function SellerDashboard() {
     }
   }
  
-  const handleDeleteSellerProduct = async (productId) => {
-    const confirmed = window.confirm('Delete this product? It will be removed from buyers and appear as unavailable in orders.')
-    if (!confirmed) return
+  const handleDeleteSellerProduct = async (productId, skipConfirmation = false) => {
+    if (!skipConfirmation) {
+      const confirmed = window.confirm('Delete this product? It will be removed from buyers and appear as unavailable in orders.')
+      if (!confirmed) return
+    }
  
     try {
       await updateDoc(doc(db, 'products', productId), {
@@ -174,6 +176,36 @@ export function SellerDashboard() {
         deletedAt: new Date(),
         deletedBy: user.uid,
       })
+
+      const ordersSnapshot = await getDocs(query(
+        collection(db, 'orders'),
+        where('sellerId', '==', user.uid),
+      ))
+      const activeStatuses = new Set(['pending', 'accepted', 'processing', 'shipped'])
+      const affectedOrders = ordersSnapshot.docs.filter((orderDoc) => {
+        const order = orderDoc.data()
+        const status = (order.status || '').toString().trim().toLowerCase()
+        const items = order.products || order.items || []
+        return activeStatuses.has(status) && items.some((item) => item.productId === productId)
+      })
+
+      await Promise.all(affectedOrders.map(async (orderDoc) => {
+        const order = orderDoc.data()
+        const affectedItem = (order.products || order.items || []).find((item) => item.productId === productId)
+        await updateDoc(orderDoc.ref, {
+          status: 'Cancelled',
+          cancellationReason: `${affectedItem?.name || 'A product'} is no longer available because it was deleted by the seller.`,
+          cancelledAt: new Date(),
+          cancelledBy: 'seller',
+        })
+        await createNotification(
+          order.userId,
+          `${affectedItem?.name || 'A product'} is unavailable because it was deleted by the seller. Order #${orderDoc.id.slice(0, 8).toUpperCase()} has been cancelled.`,
+          orderDoc.id,
+          'product_unavailable',
+        )
+      }))
+
       setToastMessage('Product deleted successfully.')
       setToastType('success')
       await fetchProducts()
@@ -417,7 +449,16 @@ export function SellerDashboard() {
 
   const normalizeOrderStatus = (status = '') => status.toString().trim().toLowerCase()
 
-  const getOrderItems = (order = {}) => order?.products || order?.items || []
+  const activeProductIds = useMemo(() => new Set(products.map((product) => product.id)), [products])
+
+  const getOrderItems = (order = {}) => {
+    const items = order?.products || order?.items || []
+    const status = normalizeOrderStatus(order.status)
+    if (['cancelled', 'rejected', 'delivered', 'completed'].includes(status)) return items
+    return items.filter((item) => !item.productId || activeProductIds.has(item.productId))
+  }
+
+  const hasVisibleItems = (order) => getOrderItems(order).length > 0
 
   const getOrderTotal = (order = {}) => {
     const items = getOrderItems(order)
@@ -442,7 +483,7 @@ export function SellerDashboard() {
     const productMap = {}
     const salesByProduct = {}
     let totalRevenue = 0
-    let totalOrders = orders.length
+    let totalOrders = orders.filter(hasVisibleItems).length
 
     orders.forEach((order) => {
       const normalizedStatus = normalizeOrderStatus(order.status)
@@ -814,17 +855,17 @@ export function SellerDashboard() {
 
   // Filter pending orders
   const pendingOrders = ordersWithDetails.filter(order => 
-    normalizeOrderStatus(order.status) === 'pending'
+    normalizeOrderStatus(order.status) === 'pending' && hasVisibleItems(order)
   )
 
   // Filter processing and completed orders
   const processingOrders = ordersWithDetails.filter(order => {
     const status = normalizeOrderStatus(order.status)
-    return status === 'accepted' || status === 'processing' || status === 'shipped'
+    return hasVisibleItems(order) && (status === 'accepted' || status === 'processing' || status === 'shipped')
   })
 
   const completedOrders = ordersWithDetails.filter(order => 
-    normalizeOrderStatus(order.status) === 'completed' || normalizeOrderStatus(order.status) === 'delivered'
+    hasVisibleItems(order) && (normalizeOrderStatus(order.status) === 'completed' || normalizeOrderStatus(order.status) === 'delivered')
   )
 
   const STATUS_FLOW = {
@@ -1800,6 +1841,7 @@ export function SellerDashboard() {
                               key={product.id}
                               product={product}
                               showManagementActions={true}
+                              onDeleteProduct={(productId) => handleDeleteSellerProduct(productId, true)}
                               onProductUpdated={fetchProducts}
                               onEditProduct={(productToEdit) => {
                                 setEditingProduct(productToEdit)

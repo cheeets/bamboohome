@@ -10,6 +10,36 @@ if (!process.env.GROQ_API_KEY) {
   dotenv.config({ path: resolve(__dirname, '..', 'backend', '.env') });
 }
 
+const MODEL_FALLBACK_CHAIN = [
+  "qwen/qwen3.8-27b",
+  "openai/gpt-oss-120b",
+  "openai/gpt-oss-20b",
+  "groq/compound",
+  "groq/compound-mini",
+];
+
+async function createChatCompletionWithFallback(groq, params, modelChain = MODEL_FALLBACK_CHAIN) {
+  let lastError = null;
+  for (const model of modelChain) {
+    try {
+      return await groq.chat.completions.create({ ...params, model });
+    } catch (err) {
+      lastError = err;
+      const msg = (err?.error?.message || err?.message || "").toLowerCase();
+      if (
+        msg.includes("decommissioned") ||
+        msg.includes("does not exist") ||
+        msg.includes("model_not_found") ||
+        msg.includes("no access")
+      ) {
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError || new Error("All models in the fallback chain failed.");
+}
+
 function generateFallbackInsights(products) {
   if (!Array.isArray(products) || products.length === 0) {
     return "AI Sales Advisor\n\nNo products available to analyze.";
@@ -131,15 +161,6 @@ export default async function handler(req, res) {
 
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-    const products = req.body?.products;
-
-    if (!Array.isArray(products) || products.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: "No product data was provided.",
-      });
-    }
-
     const validProducts = products
       .filter((product) => product && typeof product.name === "string" && product.name.trim() !== "")
       .map((product) => ({
@@ -176,8 +197,7 @@ export default async function handler(req, res) {
         potentialRevenue: product.estimatedRevenue,
       }));
 
-    const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+    const completion = await createChatCompletionWithFallback(groq, {
       messages: [
         {
           role: "system",

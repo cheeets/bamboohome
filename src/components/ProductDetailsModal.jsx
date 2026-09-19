@@ -10,7 +10,7 @@ import { Toast } from './Toast'
 import { SellerStoreModal } from './SellerStoreModal'
 import '../css/ProductDetailsModal.css'
 
-export function ProductDetailsModal({ isOpen, product, onClose }) {
+export function ProductDetailsModal({ isOpen, product, onClose, onVisitStore }) {
   const { user, userRole } = useAuth()
   const { addToCart } = useCart()
   const navigate = useNavigate()
@@ -332,7 +332,13 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
                       <button
                         className="btn-message-seller"
-                        onClick={() => setShowSellerStore(true)}
+                        onClick={() => {
+                          if (onVisitStore) {
+                            onVisitStore()
+                          } else {
+                            setShowSellerStore(true)
+                          }
+                        }}
                         style={{ background: '#10B981', color: '#fff', border: 'none' }}
                       >
                         <Store size={14} />
@@ -479,12 +485,14 @@ export function ProductDetailsModal({ isOpen, product, onClose }) {
       )}
 
       {/* Seller Store Modal */}
-      <SellerStoreModal
-        isOpen={showSellerStore}
-        sellerId={product.sellerId || product.userId || product.createdBy}
-        storeName={product.storeName || sellerData?.storeName || 'Store'}
-        onClose={() => setShowSellerStore(false)}
-      />
+      {!onVisitStore && (
+        <SellerStoreModal
+          isOpen={showSellerStore}
+          sellerId={product.sellerId || product.userId || product.createdBy}
+          storeName={product.storeName || sellerData?.storeName || 'Store'}
+          onClose={() => setShowSellerStore(false)}
+        />
+      )}
     </>
   )
 }
