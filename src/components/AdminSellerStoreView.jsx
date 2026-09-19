@@ -23,9 +23,11 @@ export default function AdminSellerStoreView({ seller, onBack }) {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list = []
       snapshot.forEach((docSnap) => {
+        const data = docSnap.data()
+        if (data.deleted) return
         list.push({
           id: docSnap.id,
-          ...docSnap.data()
+          ...data
         })
       })
       setProducts(list)
@@ -44,6 +46,20 @@ export default function AdminSellerStoreView({ seller, onBack }) {
     setShowProductModal(false)
     setEditingProduct(null)
   }
+
+  const isSellerDeleted = !!seller?.deleted
+  const isSellerSuspended = (() => {
+    if (!seller?.isSuspended) return false
+    if (!seller.suspensionEndAt) return true
+    const endsAt = seller.suspensionEndAt?.toDate ? seller.suspensionEndAt.toDate() : new Date(seller.suspensionEndAt)
+    return endsAt.getTime() > Date.now()
+  })()
+  const isStoreUnavailable = isSellerDeleted || isSellerSuspended
+  const storeUnavailableReason = isSellerDeleted
+    ? 'This store is no longer active (seller deleted).'
+    : isSellerSuspended
+      ? 'This store is currently suspended.'
+      : null
 
   const inventoryStats = {
     total: products.length,
@@ -86,6 +102,20 @@ export default function AdminSellerStoreView({ seller, onBack }) {
 
       <div className="products-management-section">
         <h2>Product Listings</h2>
+
+        {isStoreUnavailable && (
+          <div style={{
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '12px',
+            padding: '20px',
+            marginBottom: '20px',
+            textAlign: 'center'
+          }}>
+            <p style={{ fontWeight: 700, color: '#991b1b', fontSize: '15px', margin: 0 }}>⚠️ {storeUnavailableReason}</p>
+            <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '6px' }}>Products below are not visible to buyers. This view is for admin moderation only.</p>
+          </div>
+        )}
         
         {loading ? (
           <div className="loading-spinner">Loading store products...</div>

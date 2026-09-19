@@ -11,7 +11,7 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import { formatPrice } from '../utils/rating'
 import '../css/AdminProductsDashboard.css'
 
-export default function AdminProductsDashboard({ allProducts, onDeleteProduct, onUpdateStock, onEditProduct }) {
+export default function AdminProductsDashboard({ allProducts, marketplaceVisibleCount, totalCatalogCount, onDeleteProduct, onUpdateStock, onEditProduct }) {
   const [search, setSearch] = useState('')
   const [sellerFilter, setSellerFilter] = useState('all')
   const [categories, setCategories] = useState([])
@@ -74,9 +74,15 @@ export default function AdminProductsDashboard({ allProducts, onDeleteProduct, o
         </div>
         <div className="header-stats">
           <div className="mini-stat">
-            <span className="label">Total Products</span>
-            <span className="value">{activeProducts.length}</span>
+            <span className="label">Marketplace Visible</span>
+            <span className="value">{marketplaceVisibleCount ?? activeProducts.length}</span>
           </div>
+          {typeof totalCatalogCount === 'number' && totalCatalogCount !== (marketplaceVisibleCount ?? activeProducts.length) && (
+            <div className="mini-stat">
+              <span className="label">Total Catalog</span>
+              <span className="value" style={{ color: '#6b7280' }}>{totalCatalogCount}</span>
+            </div>
+          )}
           <div className="mini-stat">
             <span className="label">Low Stock</span>
             <span className="value danger">

@@ -13,6 +13,7 @@ export function ShopPage() {
   const { user, userRole } = useAuth()
   const [searchParams] = useSearchParams()
   const [products, setProducts] = useState([])
+  const [allSellers, setAllSellers] = useState(new Map())
   const [categories, setCategories] = useState([{ id: 'all', name: 'All' }])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -33,11 +34,33 @@ export function ShopPage() {
 
   useEffect(() => {
     fetchCategories()
+    fetchAllSellers()
   }, [])
 
   useEffect(() => {
     fetchProducts()
-  }, [selectedCategory])
+  }, [selectedCategory, allSellers])
+
+  const fetchAllSellers = async () => {
+    try {
+      const sellersQuery = query(collection(db, 'users'))
+      const snapshot = await getDocs(sellersQuery)
+      const sellerMap = new Map()
+      snapshot.forEach((doc) => {
+        const data = doc.data() || {}
+        sellerMap.set(doc.id, {
+          id: doc.id,
+          role: data.role,
+          isSuspended: !!data.isSuspended,
+          suspensionEndAt: data.suspensionEndAt || null,
+          deleted: !!data.deleted,
+        })
+      })
+      setAllSellers(sellerMap)
+    } catch (err) {
+      console.error('Error fetching sellers for shop visibility filter:', err)
+    }
+  }
 
   const fetchCategories = async () => {
     try {
@@ -58,6 +81,22 @@ export function ShopPage() {
     return category ? category.name : categoryId || 'Uncategorized'
   }
 
+  const isSellerVisible = (sellerId) => {
+    if (!sellerId) return true
+    const seller = allSellers.get(sellerId)
+    if (!seller) return true
+    if (seller.deleted) return false
+    if (seller.isSuspended) {
+      if (seller.suspensionEndAt) {
+        const endsAt = seller.suspensionEndAt?.toDate ? seller.suspensionEndAt.toDate() : new Date(seller.suspensionEndAt)
+        if (endsAt.getTime() > Date.now()) return false
+      } else {
+        return false
+      }
+    }
+    return true
+  }
+
   const fetchProducts = async () => {
     try {
       setLoading(true)
@@ -69,7 +108,11 @@ export function ShopPage() {
       }
       const querySnapshot = await getDocs(q)
       const productList = querySnapshot.docs
-        .filter((doc) => !doc.data().deleted)
+        .filter((doc) => {
+          const data = doc.data()
+          if (data.deleted) return false
+          return isSellerVisible(data.sellerId)
+        })
         .map((doc) => ({
           id: doc.id,
           ...doc.data(),

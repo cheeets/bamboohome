@@ -110,17 +110,44 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
   const fetchSellerProducts = async () => {
     try {
       setLoading(true)
-      const q = query(collection(db, 'products'), where('sellerId', '==', sellerId))
-      const querySnapshot = await getDocs(q)
-      const products = []
-      querySnapshot.forEach((doc) => {
-        if (doc.data().deleted) return
-        products.push({
-          id: doc.id,
-          ...doc.data(),
+      const sellerDocRef = doc(db, 'users', sellerId)
+      const sellerDocSnap = await getDoc(sellerDocRef)
+      const sellerInfo = sellerDocSnap.exists() ? sellerDocSnap.data() : null
+      const isSellerDeleted = !!sellerInfo?.deleted
+      const isSellerSuspended = (() => {
+        if (!sellerInfo?.isSuspended) return false
+        if (!sellerInfo.suspensionEndAt) return true
+        const endsAt = sellerInfo.suspensionEndAt?.toDate ? sellerInfo.suspensionEndAt.toDate() : new Date(sellerInfo.suspensionEndAt)
+        return endsAt.getTime() > Date.now()
+      })()
+      const isStoreUnavailable = isSellerDeleted || isSellerSuspended
+
+      let products = []
+      if (!isStoreUnavailable) {
+        const q = query(collection(db, 'products'), where('sellerId', '==', sellerId))
+        const querySnapshot = await getDocs(q)
+        querySnapshot.forEach((doc) => {
+          const data = doc.data()
+          if (data.deleted) return
+          products.push({
+            id: doc.id,
+            ...data,
+          })
         })
-      })
+      }
       setSellerProducts(products)
+      setSellerData((prev) => {
+        const base = prev || sellerInfo || {}
+        return {
+          ...base,
+          _storeUnavailable: isStoreUnavailable,
+          _storeUnavailableReason: isSellerDeleted
+            ? 'This store is no longer active.'
+            : isSellerSuspended
+              ? 'This store is currently suspended.'
+              : null,
+        }
+      })
     } catch (err) {
       console.error('Error fetching seller products:', err)
       setSellerProducts([])
@@ -396,7 +423,15 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
             </div>
           )}
 
-          {!loading && filteredDisplayProducts.length === 0 && (
+          {!loading && sellerData?._storeUnavailable && (
+            <div className="shopee-empty" style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px' }}>
+              <span className="empty-icon">🚫</span>
+              <p style={{ fontWeight: 700, color: '#991b1b', fontSize: '16px' }}>{sellerData._storeUnavailableReason}</p>
+              <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>Products from this store are not visible to buyers at this time.</p>
+            </div>
+          )}
+
+          {!loading && !sellerData?._storeUnavailable && filteredDisplayProducts.length === 0 && (
             <div className="shopee-empty">
               <span className="empty-icon">🛍️</span>
               <p>No products found.</p>

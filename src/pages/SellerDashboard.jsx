@@ -83,6 +83,7 @@ export function SellerDashboard() {
   }, [isSuspended, suspensionEndAt])
 
   const [products, setProducts] = useState([])
+  const [globalProductCount, setGlobalProductCount] = useState(0)
   const [orders, setOrders] = useState([])
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
@@ -221,6 +222,7 @@ export function SellerDashboard() {
     if (!user) return
 
     fetchCategories()
+    fetchGlobalProductStats()
 
     const q = query(
       collection(db, 'products'),
@@ -245,6 +247,41 @@ export function SellerDashboard() {
 
     return () => unsubscribe()
   }, [user])
+
+  const fetchGlobalProductStats = async () => {
+    try {
+      const snapshot = await getDocs(query(collection(db, 'products')))
+      const usersSnapshot = await getDocs(query(collection(db, 'users')))
+      const sellerMap = new Map()
+      usersSnapshot.forEach((u) => {
+        const d = u.data() || {}
+        sellerMap.set(u.id, {
+          deleted: !!d.deleted,
+          isSuspended: !!d.isSuspended,
+          suspensionEndAt: d.suspensionEndAt || null,
+        })
+      })
+      let visibleCount = 0
+      snapshot.forEach((doc) => {
+        const data = doc.data() || {}
+        if (data.deleted) return
+        const seller = sellerMap.get(data.sellerId)
+        if (seller?.deleted) return
+        if (seller?.isSuspended) {
+          if (seller.suspensionEndAt) {
+            const endsAt = seller.suspensionEndAt?.toDate ? seller.suspensionEndAt.toDate() : new Date(seller.suspensionEndAt)
+            if (endsAt.getTime() > Date.now()) return
+          } else {
+            return
+          }
+        }
+        visibleCount += 1
+      })
+      setGlobalProductCount(visibleCount)
+    } catch (err) {
+      console.error('Error fetching global product stats:', err)
+    }
+  }
 
   const fetchCategories = async () => {
     try {
@@ -1144,7 +1181,10 @@ export function SellerDashboard() {
                       fontWeight: 800,
                       letterSpacing: '-0.01em'
                     }}>{products.length.toLocaleString()}</span>
-                    <span className="stat-label">Products</span>
+                    <span className="stat-label">My Store</span>
+                    <span className="stat-sub-label" style={{ display: 'block', fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                      {globalProductCount ? `Marketplace total: ${globalProductCount.toLocaleString()}` : ''}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1798,7 +1838,7 @@ export function SellerDashboard() {
                           <p>Manage your catalog, stock, and listings</p>
                         </div>
                         <div className="panel-header-actions">
-                          <span className="seller-product-count">{products.length} {products.length === 1 ? 'product' : 'products'}</span>
+                          <span className="seller-product-count">{products.length} {products.length === 1 ? 'product' : 'products'} in your store{globalProductCount ? ` · ${globalProductCount.toLocaleString()} in marketplace` : ''}</span>
                           <button
                             onClick={() => {
                               setEditingProduct(null)

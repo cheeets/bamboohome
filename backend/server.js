@@ -92,9 +92,10 @@ app.get("/", (req, res) => {
 app.post("/api/buyer-support", async (req, res) => {
   try {
     if (!groq) {
-      return res.status(503).json({
-        success: false,
-        error: "The AI support assistant is temporarily disabled (GROQ_API_KEY missing).",
+      return res.json({
+        success: true,
+        fallback: true,
+        reply: "Hi — I'm running with a built-in help guide right now.\n\nQuick questions I can answer: How to order, how to contact a seller, how to track delivery, payment methods, updating your profile, managing your cart, browsing and filtering, ratings and reviews, and returns or refunds.\n\nType a short question (example: \"How do I pay with GCash?\") and I'll give you the step-by-step guide. If you need human help, contact a Bamboo Home administrator via the Chat page or message the seller store directly.",
       });
     }
 
@@ -153,18 +154,19 @@ Guidelines:
 
     const reply =
       completion.choices?.[0]?.message?.content ||
-      'Sorry, I could not generate a response.';
+      "Hi — I couldn't generate a custom answer right now, but feel free to ask another question or contact seller chat for help.";
 
     res.json({
       success: true,
       reply,
     });
   } catch (error) {
-    console.error("Buyer support error:", error);
+    console.error("Buyer support error (fallback canned):", error?.message || error);
 
-    res.status(500).json({
-      success: false,
-      error: "The AI support assistant is temporarily unavailable.",
+    res.json({
+      success: true,
+      fallback: true,
+      reply: "Hi — I'm running with a built-in help guide right now.\n\nQuick questions I can answer: How to order, how to contact a seller, how to track delivery, payment methods, updating your profile, managing your cart, browsing and filtering, ratings and reviews, and returns or refunds.\n\nType a short question and I'll guide you step-by-step.",
     });
   }
 });
@@ -172,9 +174,13 @@ Guidelines:
 app.post("/api/seller-support", async (req, res) => {
   try {
     if (!groq) {
-      return res.status(503).json({
-        success: false,
-        error: "The AI support assistant is temporarily disabled (GROQ_API_KEY missing).",
+      const isSuspended = req.body?.isSuspended === true;
+      return res.json({
+        success: true,
+        fallback: true,
+        reply: isSuspended
+          ? "Your seller account is currently suspended. I can explain the suspension reason, countdown, marketplace rules, how to request a review, and how to avoid repeats. I CANNOT remove the suspension — only an administrator can. Ask a short question like \"How do I request a review?\" or \"How long will it last?\"."
+          : "Hi — I'm running in resilient-mode for your seller account right now using a built-in operations guide.\n\nTopics I can help with: adding products, updating stock, processing orders (Pending → Process → Shipped → Delivered), sales analytics, why a product isn't visible to buyers, messaging buyers, deleting products, and how to improve sales.\n\nAsk a short question like \"Why isn't my product showing?\" or \"How do I process an order?\".",
       });
     }
 
@@ -289,18 +295,22 @@ Important rules:
 
     const reply =
       completion.choices?.[0]?.message?.content ||
-      'Sorry, I could not generate a response.';
+      "Response could not be generated; please try re-phrasing or message admin via Chat page for direct help.";
 
     res.json({
       success: true,
       reply,
     });
   } catch (error) {
-    console.error("Seller support error:", error);
+    console.error("Seller support error (fallback canned):", error?.message || error);
 
-    res.status(500).json({
-      success: false,
-      error: "The AI support assistant is temporarily unavailable.",
+    const isSuspended = req.body?.isSuspended === true;
+    res.json({
+      success: true,
+      fallback: true,
+      reply: isSuspended
+        ? "Your seller account is currently suspended. I can explain the suspension reason, countdown, marketplace rules, how to request a review, and how to avoid repeats. I CANNOT remove the suspension — only an administrator can."
+        : "I couldn't reach the live AI right now, but I can help with built-in guides for seller topics: adding products, updating stock, processing orders, sales analytics, why a product isn't visible, messaging buyers, deleting products, and improving sales. Ask a short question.",
     });
   }
 });

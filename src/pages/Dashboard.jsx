@@ -68,6 +68,43 @@ export function AdminOrdersDashboard() {
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState('success')
 
+  const sellerMap = React.useMemo(() => {
+    const map = new Map()
+    allUsers.forEach((u) => {
+      map.set(u.id, {
+        id: u.id,
+        role: u.role,
+        isSuspended: !!u.isSuspended,
+        suspensionEndAt: u.suspensionEndAt || null,
+        deleted: !!u.deleted,
+      })
+    })
+    return map
+  }, [allUsers])
+
+  const isSellerVisible = (sellerId) => {
+    if (!sellerId) return true
+    const seller = sellerMap.get(sellerId)
+    if (!seller) return true
+    if (seller.deleted) return false
+    if (seller.isSuspended) {
+      if (seller.suspensionEndAt) {
+        const endsAt = seller.suspensionEndAt?.toDate ? seller.suspensionEndAt.toDate() : new Date(seller.suspensionEndAt)
+        if (endsAt.getTime() > Date.now()) return false
+      } else {
+        return false
+      }
+    }
+    return true
+  }
+
+  const visibleProducts = React.useMemo(() => {
+    return allProducts.filter((p) => !p.deleted && isSellerVisible(p.sellerId))
+  }, [allProducts, sellerMap])
+
+  const marketplaceVisibleCount = visibleProducts.length
+  const totalCatalogCount = allProducts.filter((p) => !p.deleted).length
+
   useEffect(() => {
     if (!user || userRole !== 'admin') {
       navigate('/')
@@ -777,7 +814,9 @@ export function AdminOrdersDashboard() {
             <>
               {renderViewHeader('Product Moderation', 'Review and manage catalog items')}
               <AdminProductsDashboard
-                allProducts={allProducts}
+                allProducts={visibleProducts}
+                marketplaceVisibleCount={marketplaceVisibleCount}
+                totalCatalogCount={totalCatalogCount}
                 onDeleteProduct={handleAdminDeleteProduct}
                 onUpdateStock={handleAdminUpdateStock}
                 onEditProduct={handleAdminEditProduct}
@@ -789,10 +828,10 @@ export function AdminOrdersDashboard() {
             <div className="admin-inventory-container">
               {activeSubView === 'inventory-overview' && (
                 <>
-                  {renderViewHeader('Global Inventory', `Monitoring ${allProducts.filter(p => !p.deleted).length} products across all sellers`)}
+                  {renderViewHeader('Global Inventory', `Monitoring ${marketplaceVisibleCount} visible products across all sellers (${totalCatalogCount} total in catalog)`)}
                   <div className="products-grid-container" style={{ padding: '24px' }}>
                     <div className="products-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px' }}>
-                      {allProducts.filter(p => !p.deleted).map(product => {
+                      {visibleProducts.map(product => {
                         const isOutOfStock = (product.stock || 0) <= 0
                         const isLowStock = (product.stock || 0) <= (product.lowStockThreshold || 5)
                         return (
@@ -854,9 +893,9 @@ export function AdminOrdersDashboard() {
                 <>
                   {renderViewHeader('Low Stock Alerts', 'Items requiring immediate attention')}
                   <div style={{ padding: '24px' }}>
-                    {allProducts.filter(p => !p.deleted && (p.stock || 0) <= (p.lowStockThreshold || 5)).length > 0 ? (
+                    {visibleProducts.filter(p => (p.stock || 0) <= (p.lowStockThreshold || 5)).length > 0 ? (
                       <div className="products-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px' }}>
-                        {allProducts.filter(p => !p.deleted && (p.stock || 0) <= (p.lowStockThreshold || 5)).map(product => {
+                        {visibleProducts.filter(p => (p.stock || 0) <= (p.lowStockThreshold || 5)).map(product => {
                           const isOutOfStock = (product.stock || 0) <= 0
                           return (
                             <div key={product.id} style={{ 
