@@ -50,13 +50,13 @@ const buyerSuggestions = [
 ]
 
 export default function AISupportChatbot({
-  userRole,
-  isSuspended,
-  suspensionReason,
-  suspensionTimeRemaining,
-  sellerName,
-  storeName,
-  userName,
+  userRole = 'user',
+  isSuspended = false,
+  suspensionReason = '',
+  suspensionTimeRemaining = '',
+  sellerName = '',
+  storeName = '',
+  userName = '',
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
@@ -290,14 +290,4 @@ export default function AISupportChatbot({
       )}
     </div>
   )
-}
-
-AISupportChatbot.defaultProps = {
-  userRole: 'user',
-  isSuspended: false,
-  suspensionReason: '',
-  suspensionTimeRemaining: '',
-  sellerName: '',
-  storeName: '',
-  userName: '',
 }

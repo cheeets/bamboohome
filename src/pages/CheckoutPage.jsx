@@ -283,16 +283,14 @@ export function CheckoutPage() {
           })
         }
 
-        // 2) Perform all WRITES after all reads
-        for (const { item, ref, snap } of productSnapshots) {
+        // 2) Validate stock availability (read-only).
+        // Buyers are not permitted to write `products.stock` under the
+        // security rules, so stock is validated here and left unchanged.
+        for (const { item, snap } of productSnapshots) {
           const currentStock = snap.data().stock ?? 0
           if (currentStock < item.quantity) {
             throw new Error(`Insufficient stock for ${item.name}. Available: ${currentStock}`)
           }
-
-          transaction.update(ref, {
-            stock: currentStock - item.quantity,
-          })
         }
 
         // Create one order per seller.
@@ -520,7 +518,7 @@ export function CheckoutPage() {
                       placeholder="e.g., Maria Santos"
                       autoComplete="name"
                       maxLength="80"
-                      pattern="[A-Za-zÀ-ÖØ-öø-ÿ' -]+"
+                      pattern="[A-Za-zÀ-ÖØ-öø-ÿ' \-]+"
                       title="Use letters only and enter your first and last name."
                       required
                     />
@@ -646,10 +644,14 @@ export function CheckoutPage() {
                     <span>{formatPrice(getTotalPrice())}</span>
                   </div>
 
-                  {error && <p className="error-text" style={{ color: 'var(--danger)', marginTop: '20px', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase' }}>{error}</p>}
+                  {error && (
+                    <div className="checkout-error-banner" role="alert">
+                      {error}
+                    </div>
+                  )}
 
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     className="btn-place-order"
                     disabled={loading}
                   >

@@ -1,5 +1,5 @@
 rules_version = '2';
-// Updated rules to allow buyers to rate seller stores
+// Updated rules: buyers can rate / re-rate seller stores and products (unlimited)
 service cloud.firestore {
   match /databases/{database}/documents {
     function isSignedIn() {
@@ -33,20 +33,22 @@ service cloud.firestore {
 
       // Updates are allowed when:
       // - an admin (full override), OR
-      // - the account owner updating their profile (but not toggling deleted except to perform a constrained soft-delete), OR
-      // - a buyer writing storeRatings to a seller's profile (existing behavior)
+      // - the account owner updating their own profile (role and email can't change), OR
+      // - a buyer rating a seller's store. Only the rating fields may change,
+      //   and there is no limit on how many times a buyer can re-rate.
       allow update: if isAdmin()
         || (
           request.auth.uid == userId
           && request.resource.data.role == resource.data.role
           && request.resource.data.email == resource.data.email
         )
-        // Allow buyers to submit storeRatings on seller profiles
-        || (isUser()
-            && request.auth.uid != userId
-            && ('storeRatings' in request.resource.data));
+        || (
+          isUser()
+          && request.auth.uid != userId
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['storeRatings', 'averageRating', 'ratingCount'])
+        );
 
-      // Prevent clients from performing hard deletes; only admins (or server-side processes) can remove documents entirely.
       allow delete: if isAdmin();
     }
 
@@ -56,8 +58,27 @@ service cloud.firestore {
     }
 
     match /products/{productId} {
+      function isProductSeller() {
+        return isSignedIn() && request.auth.uid == resource.data.sellerId;
+      }
+
       allow read: if true;
-      allow create, update, delete: if request.auth != null;
+
+      // Sellers create their own products (admins can create any)
+      allow create: if isAdmin()
+        || (isSignedIn() && request.resource.data.sellerId == request.auth.uid);
+
+      // Update by: admin, the product's seller, or a buyer rating the product.
+      // Buyers can only touch the rating fields, and can re-rate unlimited times.
+      allow update: if isAdmin()
+        || isProductSeller()
+        || (
+          isUser()
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['ratings', 'averageRating', 'ratingCount'])
+        );
+
+      allow delete: if isAdmin() || isProductSeller();
     }
 
     match /orders/{orderId} {

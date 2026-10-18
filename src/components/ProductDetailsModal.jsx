@@ -113,10 +113,10 @@ export function ProductDetailsModal({ isOpen, product, onClose, onVisitStore }) 
 
     try {
       setSubmittingStoreRating(true)
-      const success = await rateStore(product.sellerId, user.uid, rating)
-      if (success) {
+      const result = await rateStore(product.sellerId, user.uid, rating)
+      if (result) {
         setStoreRating(rating)
-        setToastMessage('Thank you for rating this store!')
+        setToastMessage(result?.hadPreviousRating ? 'Your store rating has been updated!' : 'Thank you for rating this store!')
         setToastType('success')
         // Refresh seller data to show new rating
         fetchSellerData()

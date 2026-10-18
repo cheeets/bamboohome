@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../services/firebase'
 import { collection, getDocs, query, where, onSnapshot, doc, getDoc, updateDoc, deleteDoc, orderBy } from 'firebase/firestore'
@@ -107,6 +107,9 @@ export function SellerDashboard() {
   const [selectedOrderForDelivery, setSelectedOrderForDelivery] = useState(null)
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState('success')
+
+  // Tracks orders with an in-flight status update to avoid duplicate submissions
+  const updatingOrdersRef = useRef(new Set())
   const [sellerProfile, setSellerProfile] = useState({ name: '', contactNumber: '', barangay: '', municipality: '' })
   const [savingStoreProfile, setSavingStoreProfile] = useState(false)
 
@@ -364,12 +367,16 @@ export function SellerDashboard() {
     console.log('🔄 updateOrderStatus called:', { orderId, newStatus })
     
     if (newStatus === 'Delivered') {
-      // Show modal to add delivery message
+      // Show modal to add an optional delivery note
       setSelectedOrderForDelivery(orderId)
-      setDeliveryMessage('We are going to deliver your items today!')
+      setDeliveryMessage('')
       setShowDeliveryModal(true)
       return
     }
+
+    // Prevent duplicate submissions (e.g. rapid double-clicks) for the same order
+    if (updatingOrdersRef.current.has(orderId)) return
+    updatingOrdersRef.current.add(orderId)
 
     try {
       const orderRef = doc(db, 'orders', orderId)
@@ -425,14 +432,22 @@ export function SellerDashboard() {
       console.error('❌ Error updating order status:', err)
       setToastMessage(`Failed to update order status: ${err.message}`)
       setToastType('error')
+    } finally {
+      updatingOrdersRef.current.delete(orderId)
     }
   }
 
   const handleConfirmDelivery = async () => {
     if (!selectedOrderForDelivery) return
 
+    const orderId = selectedOrderForDelivery
+
+    // Prevent duplicate submissions (e.g. rapid double-clicks) for the same order
+    if (updatingOrdersRef.current.has(orderId)) return
+    updatingOrdersRef.current.add(orderId)
+
     try {
-      const orderRef = doc(db, 'orders', selectedOrderForDelivery)
+      const orderRef = doc(db, 'orders', orderId)
       
       // Get order details to find the buyer's userId
       const orderDoc = await getDoc(orderRef)
@@ -442,22 +457,22 @@ export function SellerDashboard() {
       
       const orderData = orderDoc.data()
       const buyerUserId = orderData.userId
-      const finalMessage = deliveryMessage.trim() || 'Your order is on the way!'
+      const finalMessage = deliveryMessage.trim()
       
-      // Update order status with delivery message
+      // Update order status with the optional delivery note
       await updateDoc(orderRef, { 
         status: 'Delivered',
         deliveryMessage: finalMessage
       })
       
-      // Trigger notification for buyer with custom message
+      // Trigger notification for buyer with optional custom message
       if (buyerUserId) {
-        await notifyOrderStatusChange(buyerUserId, selectedOrderForDelivery, 'Delivered', finalMessage)
+        await notifyOrderStatusChange(buyerUserId, orderId, 'Delivered', finalMessage)
       }
       
       setOrders(prevOrders => 
         prevOrders.map(order => 
-          order.id === selectedOrderForDelivery ? { ...order, status: 'Delivered' } : order
+          order.id === orderId ? { ...order, status: 'Delivered' } : order
         )
       )
       
@@ -465,13 +480,15 @@ export function SellerDashboard() {
       setSelectedOrderForDelivery(null)
       setDeliveryMessage('')
       
-      console.log(`Order ${selectedOrderForDelivery} marked as delivered`)
+      console.log(`Order ${orderId} marked as delivered`)
       setToastMessage('Order marked as delivered!')
       setToastType('success')
     } catch (err) {
       console.error('Error updating order status:', err)
       setToastMessage(`Failed to update order status: ${err.message}`)
       setToastType('error')
+    } finally {
+      updatingOrdersRef.current.delete(orderId)
     }
   }
 
@@ -2000,7 +2017,7 @@ export function SellerDashboard() {
                   <textarea
                     value={deliveryMessage}
                     onChange={(e) => setDeliveryMessage(e.target.value)}
-                    placeholder="e.g., We are going to deliver your items today at 2 PM!"
+                    placeholder="e.g., Your order was delivered to your doorstep at 2 PM."
                     rows="4"
                     style={{
                       width: '100%',

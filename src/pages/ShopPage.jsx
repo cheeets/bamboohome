@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { db } from '../services/firebase'
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore'
+import { collection, getDocs, query, where, orderBy, onSnapshot } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 import { ProductCard } from '../components/ProductCard'
 import { ProductModal } from '../components/ProductModal'
@@ -20,7 +20,7 @@ export function ShopPage() {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedStore, setSelectedStore] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
-  const [sortBy, setSortBy] = useState('newest')
+  const [sortBy, setSortBy] = useState('rating')
   const [currentPage, setCurrentPage] = useState(1)
   const [showProductModal, setShowProductModal] = useState(false)
   const [modalCategory, setModalCategory] = useState('')
@@ -38,7 +38,40 @@ export function ShopPage() {
   }, [])
 
   useEffect(() => {
-    fetchProducts()
+    setLoading(true)
+    const q = selectedCategory && selectedCategory !== 'all'
+      ? query(collection(db, 'products'), where('category', '==', selectedCategory))
+      : query(collection(db, 'products'), orderBy('createdAt', 'desc'))
+
+    // Real-time subscription so rating changes reflect without a page refresh.
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const productList = querySnapshot.docs
+          .filter((doc) => {
+            const data = doc.data()
+            if (data.deleted) return false
+            return isSellerVisible(data.sellerId)
+          })
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            storeName: doc.data().storeName || 'GreenNest',
+            sellerId: doc.data().sellerId,
+          }))
+        setProducts(productList)
+        setError('')
+        setLoading(false)
+      },
+      (err) => {
+        console.error('Error fetching products:', err)
+        setError('Failed to fetch products. Please try again later.')
+        setProducts([])
+        setLoading(false)
+      }
+    )
+
+    return () => unsubscribe()
   }, [selectedCategory, allSellers])
 
   const fetchAllSellers = async () => {
@@ -227,8 +260,8 @@ export function ShopPage() {
                 onChange={(e) => setSortBy(e.target.value)}
                 className="sort-select"
               >
-                <option value="newest">Newest</option>
                 <option value="rating">Highest Ratings</option>
+                <option value="newest">Newest</option>
                 <option value="price-asc">Price: Low to High</option>
                 <option value="price-desc">Price: High to Low</option>
                 <option value="name-asc">Name: A–Z</option>

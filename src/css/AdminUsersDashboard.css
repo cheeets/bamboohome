@@ -636,9 +636,13 @@
     max-width: 100%;
   }
 
-  .rbac-table th:nth-child(3),
-  .rbac-table td:nth-child(3) {
-    display: none; /* Hide Joined Date column on smaller screens */
+  .rbac-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .rbac-table {
+    min-width: 720px;
   }
 
   .modal-header {
@@ -693,11 +697,6 @@
   .filter-chip {
     padding: 6px 12px;
     font-size: 0.8rem;
-  }
-
-  .rbac-table th:nth-child(2),
-  .rbac-table td:nth-child(2) {
-    display: none; /* Hide Current Role column on very small screens */
   }
 
   .modal-title-group {

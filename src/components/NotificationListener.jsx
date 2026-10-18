@@ -78,7 +78,7 @@ export function NotificationListener() {
               type: 'accepted',
               icon: <Package size={24} />,
               title: 'Order Accepted!',
-              message: 'Your order has been accepted by the seller and is being prepared.',
+              message: 'Your order has been accepted by the seller and is now being processed.',
               color: '#22c55e',
               timestamp: new Date()
             }
@@ -94,15 +94,17 @@ export function NotificationListener() {
               timestamp: new Date()
             }
           } else if (currentStatus === 'delivered') {
-            const deliveryMessage = data.deliveryMessage || 'Your order will be delivered today!'
+            const note = (data.deliveryMessage || '').trim()
             notification = {
               id: `${orderId}_${Date.now()}`,
               orderId,
-              type: 'delivery',
+              type: 'delivered',
               icon: <Truck size={24} />,
-              title: 'Out for Delivery!',
-              message: deliveryMessage,
-              color: '#3b82f6',
+              title: 'Order Delivered!',
+              message: note
+                ? `Your order has been marked as delivered by the seller. ${note}`
+                : 'Your order has been marked as delivered by the seller.',
+              color: '#22c55e',
               timestamp: new Date()
             }
           } else if (currentStatus === 'rejected') {
@@ -194,6 +196,17 @@ export function NotificationListener() {
                 title: 'Order Processing',
                 message: data.message,
                 color: '#3b82f6',
+                timestamp: new Date()
+              }
+            } else if (data.type === 'order_delivered') {
+              notification = {
+                id: `${notificationId}_${Date.now()}`,
+                orderId: data.relatedId,
+                type: 'delivered',
+                icon: <Truck size={24} />,
+                title: 'Order Delivered!',
+                message: data.message,
+                color: '#22c55e',
                 timestamp: new Date()
               }
             } else if (data.type === 'out_for_delivery') {

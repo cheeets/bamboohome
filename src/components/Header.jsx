@@ -314,6 +314,7 @@ export function Header() {
                       {notif.type === 'order_accepted' ? '✅ Order Accepted' :
                        notif.type === 'order_rejected' ? '❌ Order Rejected' :
                        notif.type === 'order_processing' ? '⚙️ Order Processing' :
+                       notif.type === 'order_delivered' ? '📦 Order Delivered' :
                        notif.type === 'out_for_delivery' ? '🚚 Out for Delivery' :
                        notif.type === 'new_order' ? '🛒 New Order' :
                        notif.type === 'seller_warning' ? '⚠️ Admin Warning' :

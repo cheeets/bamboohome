@@ -128,7 +128,7 @@ export async function notifyOrderStatusChange(userId, orderId, newStatus, delive
     console.log('✉️ Triggering order_accepted notification')
     await createNotification(
       userId,
-      'Your order has been accepted by the seller and is being prepared.',
+      'Your order has been accepted by the seller and is now being processed.',
       orderId,
       'order_accepted'
     )
@@ -141,13 +141,19 @@ export async function notifyOrderStatusChange(userId, orderId, newStatus, delive
       'order_processing'
     )
   } else if (status === 'delivered') {
-    console.log('✉️ Triggering out_for_delivery notification')
-    const message = deliveryMessage || 'Your order is now out for delivery!'
+    console.log('✉️ Triggering order_delivered notification')
+    // The order has already been delivered at this point, so the notification must
+    // state that it is delivered (never "will be delivered today"). A seller note,
+    // when provided, is appended after the delivered statement.
+    const note = (deliveryMessage || '').trim()
+    const message = note
+      ? `Your order has been marked as delivered by the seller. ${note}`
+      : 'Your order has been marked as delivered by the seller.'
     await createNotification(
       userId,
       message,
       orderId,
-      'out_for_delivery'
+      'order_delivered'
     )
   } else if (status === 'rejected') {
     console.log('✉️ Triggering order_rejected notification')

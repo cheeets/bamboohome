@@ -1,12 +1,12 @@
 import { db } from '../services/firebase'
-import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore'
+import { doc, runTransaction } from 'firebase/firestore'
 
 /**
- * Handles store rating submission
+ * Handles store rating submission (buyers can re-rate unlimited times).
  * @param {string} sellerId - The seller's user ID
  * @param {string} userId - The current user's ID
  * @param {number} rating - The rating value (1-5)
- * @returns {Promise<boolean>} - Success status
+ * @returns {Promise<{hadPreviousRating: boolean}>} - Result with re-rate flag
  */
 export const rateStore = async (sellerId, userId, rating) => {
   try {
@@ -22,25 +22,22 @@ export const rateStore = async (sellerId, userId, rating) => {
 
     const sellerRef = doc(db, 'users', sellerId)
 
-    // Check if user already rated
-    const sellerSnap = await getDoc(sellerRef)
-    if (sellerSnap.exists()) {
-      const currentData = sellerSnap.data()
-      const existingRating = currentData.storeRatings?.find(r => r.userId === userId)
-      if (existingRating) {
-        throw new Error('You have already rated this store.')
-      }
-    }
+    return await runTransaction(db, async (transaction) => {
+      const sellerSnap = await transaction.get(sellerRef)
+      const currentData = sellerSnap.exists() ? sellerSnap.data() : {}
+      const currentRatings = Array.isArray(currentData.storeRatings) ? currentData.storeRatings : []
+      const hadPreviousRating = currentRatings.some(r => r.userId === userId)
 
-    await updateDoc(sellerRef, {
-      storeRatings: arrayUnion({
-        userId: userId,
-        rating: rating,
-        createdAt: new Date().toISOString()
-      })
+      // Replace the buyer's previous rating (if any) with the new one.
+      const storeRatings = [
+        ...currentRatings.filter(r => r.userId !== userId),
+        { userId, rating, createdAt: new Date().toISOString() }
+      ]
+
+      transaction.update(sellerRef, { storeRatings })
+
+      return { hadPreviousRating }
     })
-
-    return true
   } catch (error) {
     console.error('Error rating store:', error)
     throw error

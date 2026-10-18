@@ -77,8 +77,11 @@ export function Orders() {
           } else if (status === 'processing') {
             setToastMessage('⚙️ Your order is now being processed.')
             setToastType('success')
-          } else if (status === 'shipped' || status === 'delivered') {
-            setToastMessage('📦 Your order is ready for delivery!')
+          } else if (status === 'shipped') {
+            setToastMessage('📦 Your order is on the way!')
+            setToastType('success')
+          } else if (status === 'delivered') {
+            setToastMessage('📦 Your order has been delivered.')
             setToastType('success')
           } else if (status === 'rejected') {
             setToastMessage('❌ Your order has been rejected by the seller.')

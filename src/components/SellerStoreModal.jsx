@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../services/firebase'
-import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore'
+import { collection, getDocs, query, where, doc, onSnapshot } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { ProductDetailsModal } from './ProductDetailsModal'
@@ -28,13 +28,81 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState('success')
 
+  const storeUnavailableRef = useRef(false)
+
   useEffect(() => {
-    if (isOpen && sellerId) {
-      fetchSellerProducts()
-      fetchSellerData()
-      fetchAllCategories()
+    if (!isOpen || !sellerId) return
+
+    setLoading(true)
+    fetchAllCategories()
+
+    // Real-time seller document: keeps the store rating and availability in sync.
+    const sellerRef = doc(db, 'users', sellerId)
+    const unsubSeller = onSnapshot(
+      sellerRef,
+      (sellerDocSnap) => {
+        const sellerInfo = sellerDocSnap.exists() ? sellerDocSnap.data() : null
+        const isSellerDeleted = !!sellerInfo?.deleted
+        const isSellerSuspended = (() => {
+          if (!sellerInfo?.isSuspended) return false
+          if (!sellerInfo.suspensionEndAt) return true
+          const endsAt = sellerInfo.suspensionEndAt?.toDate ? sellerInfo.suspensionEndAt.toDate() : new Date(sellerInfo.suspensionEndAt)
+          return endsAt.getTime() > Date.now()
+        })()
+        const isStoreUnavailable = isSellerDeleted || isSellerSuspended
+        storeUnavailableRef.current = isStoreUnavailable
+
+        setSellerData({
+          ...(sellerInfo || {}),
+          _storeUnavailable: isStoreUnavailable,
+          _storeUnavailableReason: isSellerDeleted
+            ? 'This store is no longer active.'
+            : isSellerSuspended
+              ? 'This store is currently suspended.'
+              : null,
+        })
+
+        if (user && sellerInfo?.storeRatings) {
+          const myRating = sellerInfo.storeRatings.find(r => r.userId === user.uid)
+          setUserRating(myRating ? myRating.rating : 0)
+        }
+
+        if (isStoreUnavailable) setSellerProducts([])
+      },
+      (err) => console.error('Error subscribing to seller data:', err)
+    )
+
+    // Real-time products: keeps product ratings in the store grid in sync.
+    const productsQuery = query(collection(db, 'products'), where('sellerId', '==', sellerId))
+    const unsubProducts = onSnapshot(
+      productsQuery,
+      (querySnapshot) => {
+        if (storeUnavailableRef.current) {
+          setSellerProducts([])
+          setLoading(false)
+          return
+        }
+        const products = []
+        querySnapshot.forEach((docSnap) => {
+          const data = docSnap.data()
+          if (data.deleted) return
+          products.push({ id: docSnap.id, ...data })
+        })
+        setSellerProducts(products)
+        setLoading(false)
+      },
+      (err) => {
+        console.error('Error subscribing to seller products:', err)
+        setSellerProducts([])
+        setLoading(false)
+      }
+    )
+
+    return () => {
+      unsubSeller()
+      unsubProducts()
     }
-  }, [isOpen, sellerId])
+  }, [isOpen, sellerId, user])
 
   const fetchAllCategories = async () => {
     try {
@@ -49,24 +117,6 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
       setAllCategories(categoriesList)
     } catch (err) {
       console.error('Error fetching categories:', err)
-    }
-  }
-
-  const fetchSellerData = async () => {
-    try {
-      const sellerDocRef = doc(db, 'users', sellerId)
-      const sellerDocSnap = await getDoc(sellerDocRef)
-      if (sellerDocSnap.exists()) {
-        const data = sellerDocSnap.data()
-        setSellerData(data)
-        // Set user's previous rating if any
-        if (user && data.storeRatings) {
-          const myRating = data.storeRatings.find(r => r.userId === user.uid)
-          if (myRating) setUserRating(myRating.rating)
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching seller data:', err)
     }
   }
 
@@ -93,66 +143,15 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
 
     try {
       setSubmittingRating(true)
-      await rateStore(sellerId, user.uid, rating)
+      const result = await rateStore(sellerId, user.uid, rating)
       setUserRating(rating)
-      // Refresh seller data to show new rating
-      fetchSellerData()
-      setToastMessage('Thank you for rating this store!')
+      setToastMessage(result?.hadPreviousRating ? 'Your store rating has been updated!' : 'Thank you for rating this store!')
       setToastType('success')
     } catch (err) {
       setToastMessage(`Failed to submit store rating: ${err.message}`)
       setToastType('error')
     } finally {
       setSubmittingRating(false)
-    }
-  }
-
-  const fetchSellerProducts = async () => {
-    try {
-      setLoading(true)
-      const sellerDocRef = doc(db, 'users', sellerId)
-      const sellerDocSnap = await getDoc(sellerDocRef)
-      const sellerInfo = sellerDocSnap.exists() ? sellerDocSnap.data() : null
-      const isSellerDeleted = !!sellerInfo?.deleted
-      const isSellerSuspended = (() => {
-        if (!sellerInfo?.isSuspended) return false
-        if (!sellerInfo.suspensionEndAt) return true
-        const endsAt = sellerInfo.suspensionEndAt?.toDate ? sellerInfo.suspensionEndAt.toDate() : new Date(sellerInfo.suspensionEndAt)
-        return endsAt.getTime() > Date.now()
-      })()
-      const isStoreUnavailable = isSellerDeleted || isSellerSuspended
-
-      let products = []
-      if (!isStoreUnavailable) {
-        const q = query(collection(db, 'products'), where('sellerId', '==', sellerId))
-        const querySnapshot = await getDocs(q)
-        querySnapshot.forEach((doc) => {
-          const data = doc.data()
-          if (data.deleted) return
-          products.push({
-            id: doc.id,
-            ...data,
-          })
-        })
-      }
-      setSellerProducts(products)
-      setSellerData((prev) => {
-        const base = prev || sellerInfo || {}
-        return {
-          ...base,
-          _storeUnavailable: isStoreUnavailable,
-          _storeUnavailableReason: isSellerDeleted
-            ? 'This store is no longer active.'
-            : isSellerSuspended
-              ? 'This store is currently suspended.'
-              : null,
-        }
-      })
-    } catch (err) {
-      console.error('Error fetching seller products:', err)
-      setSellerProducts([])
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -202,14 +201,24 @@ export function SellerStoreModal({ isOpen, sellerId, storeName, storePhotoUrl, o
     ...allCategories
   ]
 
-  const filteredDisplayProducts = sellerProducts.filter(product => {
-    if (activeTab === 'home') return true // Show all on home for now or first 8
-    if (activeTab === 'all') return true
-    if (activeTab === 'categories') {
-      return selectedCategory === 'all' || product.category === selectedCategory
-    }
-    return true
-  })
+  const filteredDisplayProducts = sellerProducts
+    .filter(product => {
+      if (activeTab === 'home') return true // Show all on home for now or first 8
+      if (activeTab === 'all') return true
+      if (activeTab === 'categories') {
+        return selectedCategory === 'all' || product.category === selectedCategory
+      }
+      return true
+    })
+    // Highest-rated / most-rated products first.
+    .sort((a, b) => {
+      const avgA = Number(calculateProductAverageRating(a))
+      const avgB = Number(calculateProductAverageRating(b))
+      if (avgB !== avgA) return avgB - avgA
+      const countA = Array.isArray(a.ratings) ? a.ratings.length : 0
+      const countB = Array.isArray(b.ratings) ? b.ratings.length : 0
+      return countB - countA
+    })
 
   // Helper to get category name by ID
   const getCategoryName = (id) => {
