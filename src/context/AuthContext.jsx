@@ -226,7 +226,7 @@ export function AuthProvider({ children }) {
       const newUser = userCredential.user
 
       // Save user in Firestore
-      await setDoc(doc(db, 'users', newUser.uid), {
+      const userDoc = {
         uid: newUser.uid,
         name: normalizedName,
         email,
@@ -234,10 +234,32 @@ export function AuthProvider({ children }) {
         storeName: normalizedRole === 'seller' ? sellerStoreName.trim() : null,
         storePhotoUrl: normalizedRole === 'seller' ? sellerStorePhotoUrl : null,
         contactNumber: normalizedRole === 'seller' ? normalizedSellerPhoneNumber : null,
-        municipality: normalizedMunicipality,
-        barangay: normalizedBarangay,
         createdAt: serverTimestamp(),
-      })
+      }
+
+      // A seller's store location/contact is public store information (shown on
+      // the store page), so it stays on the main document. A buyer's address is
+      // private and goes to the owner-only subcollection below.
+      if (normalizedRole === 'seller') {
+        userDoc.municipality = normalizedMunicipality
+        userDoc.barangay = normalizedBarangay
+      }
+
+      await setDoc(doc(db, 'users', newUser.uid), userDoc)
+
+      if (normalizedRole !== 'seller') {
+        try {
+          await setDoc(doc(db, 'users', newUser.uid, 'private', 'profile'), {
+            contactNumber: null,
+            municipality: normalizedMunicipality,
+            barangay: normalizedBarangay,
+            updatedAt: serverTimestamp(),
+          })
+        } catch (privateErr) {
+          // Don't fail the whole registration if the private profile write fails.
+          console.error('Error saving private profile data:', privateErr)
+        }
+      }
 
       console.log('User document created successfully:', newUser.uid)
 

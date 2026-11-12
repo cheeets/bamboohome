@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../services/firebase'
-import { doc, getDoc, updateDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, updateDoc, deleteField } from 'firebase/firestore'
 import { useAuth, CEBU_CITIES_AND_MUNICIPALITIES, PINAMUNGAJAN_BARANGAYS } from '../context/AuthContext'
 import UserSidebar from '../components/UserSidebar'
 import { useConfirmation } from '../context/ConfirmationContext'
@@ -36,15 +36,22 @@ export function Profile() {
     try {
       const userDocRef = doc(db, 'users', user.uid)
       const userDocSnap = await getDoc(userDocRef)
-      if (userDocSnap.exists()) {
-        const userData = userDocSnap.data()
-        setDisplayName(userData.fullName || userData.name || userData.displayName || user.email || 'User')
-        setContactNumber(userData.contactNumber || '')
-        setMunicipalityState(userData.municipality || '')
-        setBarangayState(userData.barangay || '')
-      } else {
-        setDisplayName(user.email || 'User')
+      const userData = userDocSnap.exists() ? userDocSnap.data() : {}
+
+      // Sensitive contact details live in the owner-only private subcollection.
+      // Fall back to the main document for accounts saved before the move.
+      let privateData = {}
+      try {
+        const privateSnap = await getDoc(doc(db, 'users', user.uid, 'private', 'profile'))
+        if (privateSnap.exists()) privateData = privateSnap.data()
+      } catch (err) {
+        console.error('Error fetching private profile data:', err)
       }
+
+      setDisplayName(userData.fullName || userData.name || userData.displayName || user.email || 'User')
+      setContactNumber(privateData.contactNumber || userData.contactNumber || '')
+      setMunicipalityState(privateData.municipality || userData.municipality || '')
+      setBarangayState(privateData.barangay || userData.barangay || '')
     } catch (err) {
       console.error('Error fetching user data:', err)
       setDisplayName(user.email || 'User')
@@ -172,10 +179,19 @@ export function Profile() {
                                   setSavingContact(true)
                                   try {
                                     if (!user) return
-                                    await updateDoc(doc(db, 'users', user.uid), {
+                                    // Phone / address are private: store them in the
+                                    // owner-only subcollection.
+                                    await setDoc(doc(db, 'users', user.uid, 'private', 'profile'), {
                                       contactNumber: contactNumber || null,
                                       municipality: municipalityState || null,
                                       barangay: barangayState || null,
+                                      updatedAt: new Date(),
+                                    }, { merge: true })
+                                    // Purge any legacy copies from the publicly readable doc.
+                                    await updateDoc(doc(db, 'users', user.uid), {
+                                      contactNumber: deleteField(),
+                                      municipality: deleteField(),
+                                      barangay: deleteField(),
                                       updatedAt: new Date(),
                                     })
                                     setToastMessage('Profile updated successfully')
